@@ -1,0 +1,91 @@
+{
+  "name": "rtsp-samsung-tv",
+  "version": "1.1.22",
+  "description": "Display  RTSP streams from IP Cameras on Samsung smart TV (Tizen TV)",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint --ext .js server.js camera-admin-ui/src",
+    "lint:fix": "eslint --fix --ext .js server.js camera-admin-ui/src EtherVue",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vzakharchenko/rtsp-samsung-tv.git"
+  },
+  "author": "vzakharchenko",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/vzakharchenko/rtsp-samsung-tv/issues"
+  },
+  "keywords": [
+    "rtsp",
+    "tizen",
+    "tizenTV",
+    "smartTV",
+    "dvr",
+    "samsung-tv",
+    "samsung-smart-tv",
+    "rtsp-stream",
+    "rtsp-player",
+    "tizen-tv",
+    "remote-control",
+    "voice-control",
+    "voice-commands",
+    "ffmpeg",
+    "rtsp-samsung-tv",
+    "samsung-tv-application",
+    "rtsp-ffmpeg-parameters",
+    "ip-cameras"
+  ],
+  "homepage": "https://github.com/vzakharchenko/rtsp-samsung-tv#readme",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "connect-ensure-login": "^0.1.1",
+    "cookie-parser": "^1.4.5",
+    "cors": "^2.8.5",
+    "cron": "^1.8.2",
+    "express": "^4.17.1",
+    "express-session": "^1.17.2",
+    "ffmpeg": "^0.0.4",
+    "keycloak-connect": "^15.0.2",
+    "mkdirp": "^1.0.4",
+    "node-rtsp-stream": "0.0.9",
+    "passport": "^0.5.0",
+    "passport-local": "^1.0.0",
+    "querystring": "^0.2.1",
+    "ws": "^8.2.3"
+  },
+  "devDependencies": {
+    "babel-eslint": "^10.1.0",
+    "eslint": "7.26.0",
+    "eslint-config": "^0.3.0",
+    "eslint-config-airbnb": "^18.2.1",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-jsx-a11y": "^6.4.1",
+    "eslint-plugin-react": "^7.26.1"
+  },
+  "bin": {
+    "RtspSamsung": "./bin/RtspSamsungServer"
+  },
+  "eslintConfig": {
+    "parser": "babel-eslint",
+    "extends": "airbnb/base",
+    "env": {
+      "browser": false,
+      "jest": true
+    },
+    "ignorePatterns": [
+      "*.min.js"
+    ],
+    "rules": {
+      "no-console": 0,
+      "prefer-promise-reject-errors": 0,
+      "prefer-destructuring": 0,
+      "react/jsx-filename-extension": 0,
+      "no-underscore-dangle": 0,
+      "no-undef": 0
+    }
+  },
+  "funding": "https://secure.wayforpay.com/button/bf5d6c136e034"
+}
