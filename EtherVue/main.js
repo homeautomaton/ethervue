@@ -1,5 +1,5 @@
 'use strict';
-//NEW
+
 /* eslint no-sequences: 0 */ // --> OFF
 /* eslint no-unused-expressions: 0 */ // --> OFF
 /* eslint no-restricted-globals: 0 */ // --> OFF
@@ -17,8 +17,9 @@ var frames = 0;
 
 var req = function req( path ) {
   var xhr = new XMLHttpRequest();
+  xhr.timeout = 2000; 
   var url = 'http://' + serverInfo.ip + ':' + serverInfo.port + path;
-  xhr.withCredentials = true;
+  xhr.withCredentials = false;
   xhr.open('GET', url, true);
   return xhr;
 };
@@ -74,18 +75,22 @@ var reload = function reload() {
 var load_lib = function load_lib( callback ) {
     var xhr = req('/lib.js');
     xhr.responseType = 'text';
-    xhr.onload = function() {
-      if (xhr.status === 200) {
-        var moduleCode = xhr.responseText;
-        lib = eval(moduleCode);
-        tizen.systeminfo.getPropertyValue("BUILD", function(result) {
-           if (result.model === "Emulator") {
-               // emulator needs some time before trying to load jsmpeg, apparently
-               let timeoutID = setTimeout(callback, 1500);
-           } else {
-               callback();
-           }
-        });
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === xhr.DONE) {
+        if (xhr.status === 200) {
+          var moduleCode = xhr.responseText;
+          lib = eval(moduleCode);
+          tizen.systeminfo.getPropertyValue("BUILD", function(result) {
+             if (result.model === "Emulator") {
+                 // emulator needs some time before trying to load jsmpeg, apparently
+                 let timeoutID = setTimeout(callback, 1500);
+             } else {
+                 callback();
+             }
+          });
+        } else {
+          window.location.href = '/server.html';
+        }
       }
     };
     xhr.send();
@@ -201,7 +206,7 @@ var main = function main() {
 
       default:
         //console.log('Key code : ' + e.keyCode);
-        alert('Key code : ' + e.keyCode);
+        //alert('Key code : ' + e.keyCode);
         break;
     }
   }, true);
@@ -244,7 +249,7 @@ var main = function main() {
 };
 
 var init = function init() {
-  load_lib(main);
+  //load_lib(main);
 };
 
 // window.onload can work without <body onload="">
