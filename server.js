@@ -125,21 +125,21 @@ console.debug = () => {
 
 function readConfig() {
   let channelJson = { channels: [] };
-  const defaultChannelFile = './config/channels.json';
+  const defaultChannelFile = './config/viewconfig.json';
   if (fs.existsSync(defaultChannelFile)) {
     const text = fs.readFileSync(defaultChannelFile, 'UTF-8');
     const defaultChannelJson = text ? JSON.parse(text) : {};
     defaultChannelJson.file = defaultChannelFile;
     channelJson = defaultChannelJson;
   }
-  const ovverideChannelFile = `${process.env.HOME}/.rtsp/userChannels.json`;
+  const ovverideChannelFile = `${process.env.HOME}/.ethervue/viewconfig.json`;
   if (fs.existsSync(ovverideChannelFile)) {
     const text = fs.readFileSync(ovverideChannelFile, 'UTF-8');
     const overrideChannel = text ? JSON.parse(text) : {};
     overrideChannel.file = ovverideChannelFile;
     channelJson = overrideChannel;
   }
-  const channelsFile = '/opt/config/channels.json';
+  const channelsFile = '/opt/config/viewconfig.json';
   if (fs.existsSync(channelsFile)) {
     const text = fs.readFileSync(channelsFile, 'UTF-8');
     const overrideChannel = text ? JSON.parse(text) : {};
@@ -233,8 +233,8 @@ function saveConfig() {
   delete configFile.file;
   let path = config.file;
   if (!config.file || config.file === './config/config.json') {
-    mkdirp.sync(`${process.env.HOME}/.rtsp`);
-    path = `${process.env.HOME}/.rtsp/userChannels.json`;
+    mkdirp.sync(`${process.env.HOME}/.ethervue`);
+    path = `${process.env.HOME}/.ethervue/viewconfig.json`;
   }
   fs.writeFileSync(path, JSON.stringify(configFile, null, 1), 'UTF-8');
   config = readConfig();
