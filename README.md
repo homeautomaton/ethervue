@@ -1,6 +1,9 @@
-# rtsp-samsung-tv
+# ethervue
 ## Description
-Display  RTSP streams from IP Cameras on Samsung smart TV (Tizen TV)
+Display streams from IP Cameras on any device with a browser (or on Samsung smart TV/Tizen TV)
+
+
+Most of the documentation from this point forward is out of date, before the project was renamed from rtsp-samsung-tv to ethervue.
 
 
 [![npm version](https://badge.fury.io/js/rtsp-samsung-tv.svg)](https://badge.fury.io/js/rtsp-samsung-tv)
