@@ -7,63 +7,32 @@ const { exec } = require('child_process');
 const Stream = require('./index');
 
 /*
-templates = [
-    { "name"          : "defaults",
-      "rtsp-loglevel" : "quiet", 
-      "ncat-loglevel" : "verbose",
-      "video-codec"   : "mpeg1video",
-      "format"        : "mpegts",
-      "fps"           : "35" },
-
-    { "name"     : "rtsp-default", 
-      "config"   : "fmpeg -rtsp_transport {{proto}} -i rtsp://{{host}}{{port}}/{{stream}} -nostats -r {{fps}} -loglevel {{rtsp-loglevel}} -vf scale={{hscale}}:{{vscale}} -f {{format}} -codec:v {{video-codec}} -",
-      "proto"    : "UDP",
-      "stream"   : "1"}
-
-    { "name"     : "ncat-ffmpeg", 
-      "config"   : "ncat {{host}} {{port}} -w 100s -i 600s | fmpeg -i - -nostats -r 35 -loglevel {{ncat-loglevel}} -vf scale={{scale}} -f mpegts -codec:v mpeg1video -",
-      "scale"    : "{{hscale}}:{{vscale}}" }
-    
-    { "name"     : "front-door",
-      "template" : "rtsp-default",
-      "stream"   : "1",
-      "host"     : "...",
-      "port"     : "..." }
-]
-*/
-
-/*
-views = [
-{ "name"   : "Front Door", "position" : "1", "cameras" : [ { "config" : "...", ... } ] },
-{ "name"   : "Group 1", "position" : "RED", "cameras" : [ { "template" : "front-door", "stream": "1",  } ] }
-]
-*/
-
-/*
- Precedence: start with Cameras defined for current input. Each parameter that is unset is stored (first value wins).
+ Precedence: start with chosen view. Each parameter that is unset is stored (first value wins).
  parameters may have {{}} notation, too, and will be evaluated.
  If "config" is found, then expand any {{}} and we're done.
- Else, continue to "template" and repeat.
+ Else, continue to "view" and repeat.
  Find any globals needed if still unexpanded in config,
  and finally calulated from dimensions {{vsscale}} and {{hscale}} in the form 640:360
+
+ o templates, parameters for config
+ o remove the 1/4/9/16 distinction in the option to add a group of cameras, since the size is just inferred now
+ o make position (1,2,3...) an attribute, rather than depending on ordering in config file
+ o mixed tcp/udp config possible in 4/9/16-way?
+ o break out camera transport (i.e. rtsp vs. ncat) from protocol
+ o enable a/b/c/d buttons for cam selection
+
 */
 
 
 
 // TODO:   
 //         default to no login, add option to enable
-//         remove the 1/4/9/16 distinction in the option to add a group of cameras, since the size is just inferred now
-//         make position (1,2,3...) an attribute, rather than depending on ordering in config file
 //         on-screen status/help display(s) in TV and web apps
-//         mixed tcp/udp config possible in 4/9/16-way?
-//         obviate next/prev http calls, use channelCount to wrap in client
-//         break out camera transport (i.e. rtsp vs. ncat) from protocol
+
 //         improve UI of TV app, for configuring address and port
-//         templates, parameters for config
 //         move content of .currentChannel to settings
 //         let different clients stream different cams
 //             persistent URLs(?)
-//         enable a/b/c/d buttons for cam selection
 //       X make keyboard inputs work on camera.html
 //       X make exit button work in addition to "back"
 //       X merge multiple -vf options, utilize OSD
@@ -109,7 +78,9 @@ const corsOptions = {
 let currentChannel = 0;
 let width = 1920;
 let height = 1080;
-
+let view_map = {};
+let views = {};
+let config = {};
 let streams = [];
 
 app.use(cors(corsOptions));
@@ -214,7 +185,102 @@ function readConfig() {
   return channelJson;
 }
 
-let config = readConfig();
+
+function traverse_view( t, sources, vars, visited ) {
+    visited[ t.name ] = 1;
+    local_vars = {}
+    for ( let v in t ) {
+        if ( v != 'name' && v != 'gallery' )
+           local_vars[ v ] = t[ v ];
+    }
+    vars.push( local_vars );
+    for ( let g in t.gallery ) {
+        more_vars = {}
+        for ( let v in t.gallery[ g ] ) {
+            if ( v != 'source' && v != 'view' )
+               more_vars[ v ] = t.gallery[ g ][ v ];
+        }
+        vars.push( more_vars );
+        if ( t.gallery[ g ].source ) {
+            sources.push( {"source" : t.gallery[ g ].source, "vars" : {...vars} });
+        }
+        if ( t.gallery[ g ].view ) {
+            traverse_view( views[ t.gallery[ g ].view ], sources, vars, visited );
+        }
+        vars.pop();
+    }
+    vars.pop();
+}
+
+function flatten_vars( vars ) {
+    var_map = {}
+    for ( let l in vars ) 
+        for ( let v in vars[l] )
+            if ( var_map[ v ] === undefined )
+                var_map[ v ] = vars[ l ][ v ];
+    for ( let v in config.defaults )
+        if ( var_map[ v ] === undefined )
+            var_map[ v ] = config.defaults[ v ];
+    var_map[ "hscale" ] = '1024';
+    var_map[ "vscale" ] = '864';
+    applied = true;
+    while ( applied ) {
+        applied = false;
+        // terrible n-squared algo here. not expecting a lot of variables, nor many with substitutions
+        for ( let v in var_map ) {
+            if ( !var_map[v].includes( '{{' ) ) {
+                s = '{{' + v + '}}';
+                res = s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                var re = new RegExp(res, 'g');
+                for ( let t in var_map ) {
+                    if ( var_map[t].includes( s ) ) {
+                        applied = true;
+                        var_map[t] = var_map[t].replace(re, var_map[v] ); 
+                    }
+                }
+            }
+        }
+    }
+    return var_map;
+}
+
+function expand_view( v ) {
+    sources = [];
+    vars = [];
+    visited = [];
+    traverse_view( v, sources, vars, visited );
+    console.log( v.name );
+    for ( let s in sources ) {
+        var_map = flatten_vars( sources[s].vars );
+        for ( let v in var_map ) {
+            res = '{{' + v + '}}';
+            res = res.replace( /[-\/\\^$*+?.()|[\]{}]/g, '\\$&' );
+            var re = new RegExp( res, 'g' );
+            sources[s].source = sources[s].source.replace( re, var_map[ v ] );
+        }
+        console.log( sources[s].source );
+    }
+    console.log( "" );
+    console.log( "" );
+    // and apply vscale and hscale
+    // expand vars into sources
+    return sources;
+}
+
+config = readConfig();
+views = readViews();
+
+function readViews() {
+  for ( let v of config.views ) {
+    views[ v.name ] = v;
+    if (v.key !== undefined) {
+      view_map[ v.key ] = v.name;
+    }
+  }
+  for ( let v in views ) {
+      expand_view( views[ v ] );
+  }
+}
 
 function readChannels() {
   return config.channels;
