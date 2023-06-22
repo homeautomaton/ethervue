@@ -166,20 +166,6 @@ export default class Config extends React.Component {
           }
           if (meta.key === '4') {
             return (<div>
-                            <Checkbox
-                                checked={!!this.state.config.config.killAll}
-                                onChange={(e) => {
-                                  const config = { ...this.state.config };
-                                  config.config.killAll = e.target.checked;
-                                  this.setState(
-                                    { config },
-                                  );
-                                  this.save().then();
-                                }}></Checkbox>
-                        </div>);
-          }
-          if (meta.key === '5') {
-            return (<div>
                             <Typography.Text editable={{
                               onChange: async (str) => {
                                 this.state.config.config.ffmpegPath = str;
@@ -834,11 +820,6 @@ export default class Config extends React.Component {
       },
       {
         key: '4',
-        name: 'Kill all ffmpeg during restart',
-        value: loadedConfig.killAll,
-      },
-      {
-        key: '5',
         name: 'ffmpegPath',
         value: loadedConfig.ffmpegPath,
       },

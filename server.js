@@ -6,29 +6,12 @@ const mkdirp = require('mkdirp');
 const { exec } = require('child_process');
 const Stream = require('./index');
 
-/*
- Precedence: start with chosen view. Each parameter that is unset is stored (first value wins).
- parameters may have {{}} notation, too, and will be evaluated.
- If "config" is found, then expand any {{}} and we're done.
- Else, continue to "view" and repeat.
- Find any globals needed if still unexpanded in config,
- and finally calulated from dimensions {{vsscale}} and {{hscale}} in the form 640:360
-
- o templates, parameters for config
- o remove the 1/4/9/16 distinction in the option to add a group of cameras, since the size is just inferred now
- o make position (1,2,3...) an attribute, rather than depending on ordering in config file
- o mixed tcp/udp config possible in 4/9/16-way?
- o break out camera transport (i.e. rtsp vs. ncat) from protocol
- o enable a/b/c/d buttons for cam selection
-
-*/
-
-
 
 // TODO:   
 //         default to no login, add option to enable
 //         on-screen status/help display(s) in TV and web apps
 
+//         enable a/b/c/d buttons for cam selection
 //         improve UI of TV app, for configuring address and port
 //         move content of .currentChannel to settings
 //         let different clients stream different cams
@@ -244,12 +227,13 @@ function flatten_vars( vars ) {
     return var_map;
 }
 
-function expand_view( v ) {
+function expand_view( v, vars ) {
+    // need vscale and hscale
     sources = [];
+    results = [];
     vars = [];
     visited = [];
     traverse_view( v, sources, vars, visited );
-    console.log( v.name );
     for ( let s in sources ) {
         var_map = flatten_vars( sources[s].vars );
         for ( let v in var_map ) {
@@ -258,28 +242,27 @@ function expand_view( v ) {
             var re = new RegExp( res, 'g' );
             sources[s].source = sources[s].source.replace( re, var_map[ v ] );
         }
-        console.log( sources[s].source );
+        if ( var_map.key !== undefined )
+            results.push( sources[s].source );
     }
-    console.log( "" );
-    console.log( "" );
-    // and apply vscale and hscale
-    // expand vars into sources
-    return sources;
+    return results;
 }
 
 config = readConfig();
 views = readViews();
 
 function readViews() {
-  for ( let v of config.views ) {
-    views[ v.name ] = v;
-    if (v.key !== undefined) {
-      view_map[ v.key ] = v.name;
+    for ( let v of config.views ) {
+        views[ v.name ] = v;
+        if (v.key !== undefined) {
+            view_map[ v.key ] = v.name;
+        }
     }
-  }
-  for ( let v in views ) {
-      expand_view( views[ v ] );
-  }
+    for ( let v in view_map ) {
+        sources = expand_view( views[ view_map[ v ] ] );
+        console.log( v + ' ' + view_map[ v ] );
+        console.log( sources );
+    }
 }
 
 function readChannels() {
@@ -338,22 +321,6 @@ function getMode() {
 
 readCurrentChannel();
 
-async function killall() {
-  return new Promise((resolve) => {
-    exec(
-      'killall ffmpeg',
-      (error, stdout, stderr) => {
-        console.debug(`stdout: ${stdout}`);
-        console.debug(`stderr: ${stderr}`);
-        if (error !== null) {
-          console.error(`exec error: ${error}`);
-          // reject(error);
-        }
-        resolve();
-      },
-    );
-  });
-}
 
 function clientClose( stream ) {
   if ( stream.wsServer.clients.size == 0 ) {
@@ -371,9 +338,6 @@ async function recreateStream() {
     stream.mpeg1Muxer.kill();
     stream.stop();
   }));
-  if (config.killAll) {
-    await killall();
-  }
   streams = [];
   const mode = getMode();
   readCurrentChannel();
