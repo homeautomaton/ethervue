@@ -13,6 +13,7 @@ STREAM_MAGIC_BYTES = "jsmp" // Must be 4 bytes
 VideoStream = function (options) {
     this.options = options
     this.name = options.name
+    this.cmd = options.cmd
     this.streamUrl = options.streamUrl
     this.width = options.width
     this.height = options.height
@@ -40,12 +41,19 @@ VideoStream.prototype.stop = function () {
 VideoStream.prototype.startMpeg1Stream = function () {
     var gettingInputData, gettingOutputData, inputData, outputData
 
-    this.mpeg1Muxer = new Mpeg1Muxer({
-        ffmpegPreOptions: this.options.ffmpegPreOptions,
-        ffmpegOptions: this.options.ffmpegOptions,
-        url: this.streamUrl,
-        ffmpegPath: !this.options.ffmpegPath ? "ffmpeg" : this.options.ffmpegPath
-    });
+    if (this.cmd) {
+        this.mpeg1Muxer = new Mpeg1Muxer({
+            cmd: this.cmd,
+            ffmpegPath: !this.options.ffmpegPath ? "ffmpeg" : this.options.ffmpegPath
+        });
+    } else {
+        this.mpeg1Muxer = new Mpeg1Muxer({
+            ffmpegPreOptions: this.options.ffmpegPreOptions,
+            ffmpegOptions: this.options.ffmpegOptions,
+            url: this.streamUrl,
+            ffmpegPath: !this.options.ffmpegPath ? "ffmpeg" : this.options.ffmpegPath
+        });
+    }
     this.stream = this.mpeg1Muxer.stream
     if (this.inputStreamStarted) {
         return

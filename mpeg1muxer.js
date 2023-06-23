@@ -8,6 +8,7 @@ events = require('events')
 
 Mpeg1Muxer = function (options) {
     var key
+    this.cmd = options.cmd
     this.url = options.url
     this.ffmpegOptions = options.ffmpegOptions
     const ffmpegOptionsDefault = {
@@ -58,9 +59,15 @@ Mpeg1Muxer = function (options) {
         ...this.additionalFlags,
         '-'
     ]
-    this.stream = child_process.spawn(options.ffmpegPath, this.spawnOptions, {
-        detached: false
-    })
+    if ( this.cmd ) {
+        this.stream = child_process.spawn("/bin/bash", [ "-c", this.cmd ], {
+            detached: false
+        });
+    } else {
+        this.stream = child_process.spawn(options.ffmpegPath, this.spawnOptions, {
+            detached: false
+        });
+    }
     this.kill=()=>{
         this.killed=true;
         this.stream.kill();

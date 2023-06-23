@@ -321,9 +321,22 @@ async function recreateStream() {
 
   if (config.views) {
       if ( view_map[ currentChannel ] ) {
-          console.log( view_map[ currentChannel ] );
           view = expand_view( views[ view_map[ currentChannel ] ], width, height );
-          console.log( view );
+          for (var i = 0; i < view.length; i++) { // eslint-disable-line no-plusplus
+              const stream = new Stream({
+                name: `${currentChannel} ${i}`,
+                cmd: view[i],
+                wsPort: 9999 + i,
+                onClientClose : clientClose
+              });
+              stream.mpeg1Muxer.on('exitWithError', () => {
+                recreateStream();
+              });
+              stream.mpeg1Muxer.on('exitWithoutError', () => {
+                recreateStream();
+              });
+              streams.push(stream);
+          }
       }
       return;
   }
