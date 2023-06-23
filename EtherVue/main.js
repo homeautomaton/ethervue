@@ -58,7 +58,7 @@ var reload = function reload() {
             console.log(xhr.responseText);
             location.reload();
           } else {
-            console.log('There was a problem with the request.');
+            window.location.href = '/server.html';
           }
         }
       };
@@ -249,7 +249,7 @@ var main = function main() {
 };
 
 var init = function init() {
-  //load_lib(main);
+  load_lib(main);
 };
 
 // window.onload can work without <body onload="">

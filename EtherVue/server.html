@@ -90,6 +90,13 @@ input[type="number"]
 
         }
 
+        function try_connection() {
+            document.getElementById("address").value = localStorage.getItem("SERVER.IP") || '192.168.2.7';
+            document.getElementById("port").value = localStorage.getItem("SERVER.PORT") || '3004';
+            getInfo(document.getElementById("address").value, document.getElementById("port").value,
+                function(text){document.getElementById("errorMessage").innerHTML = 'Server is Unavailable. '+text; });
+        }
+
         window.onload = function(){
             focusElements = document.getElementsByClassName("focus-ui");
             if (focusElements && focusElements[currentFocus]) {
@@ -110,6 +117,8 @@ input[type="number"]
                         prevFocus();
                         break;
                     case 13: //OK button
+                    case 415: // Media play
+                        try_connection();
                         break;
                     case 10009: //RETURN button
                         tizen.application.getCurrentApplication().exit();
@@ -119,11 +128,8 @@ input[type="number"]
                         break;
                 }
             }, true);
+            try_connection();
 
-            document.getElementById("address").value = localStorage.getItem("SERVER.IP") || '192.168.2.7';
-            document.getElementById("port").value = localStorage.getItem("SERVER.PORT") || '3004';
-            getInfo(document.getElementById("address").value, document.getElementById("port").value,
-                function(text){document.getElementById("errorMessage").innerHTML = 'Server is Unavailable. '+text; });
 
         };
         // add eventListener for keydown
