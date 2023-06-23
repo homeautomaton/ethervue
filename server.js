@@ -16,20 +16,6 @@ const Stream = require('./index');
 //         move content of .currentChannel to settings
 //         let different clients stream different cams
 //             persistent URLs(?)
-//       X make keyboard inputs work on camera.html
-//       X make exit button work in addition to "back"
-//       X merge multiple -vf options, utilize OSD
-//       X fix entry of "0" as channel digit
-//       X shut down ffmpeg if no clients
-//       X make channels 1-based
-//       X wrap around(?) channels up/down
-//       X give streams a title
-//       X ffmpegPath, to allow script to override
-//       X camera.html - Never Blank (1) server shut down notice
-//       X web - recognize server restart & reload(?) or catch JSON error
-//       X web - full screen mode (f key)
-//       X make a better app icon
-//       X Add 9-way, expose 16
 //
 //         AUDIO?
 //         PTZ controls?
@@ -65,6 +51,7 @@ let view_map = {};
 let views = {};
 let config = {};
 let streams = [];
+let view_list = [];
 
 app.use(cors(corsOptions));
 // eslint-disable-next-line no-use-before-define
@@ -99,9 +86,6 @@ function readConfig() {
     const overrideChannel = text ? JSON.parse(text) : {};
     overrideChannel.file = channelsFile;
     channelJson = overrideChannel;
-  }
-  if (channelJson.killAll === undefined) {
-    channelJson.killAll = false;
   }
   if (!channelJson.ffmpeg) {
     channelJson.ffmpeg = {
@@ -204,8 +188,6 @@ function flatten_vars( vars ) {
     for ( let v in config.defaults )
         if ( var_map[ v ] === undefined )
             var_map[ v ] = config.defaults[ v ];
-    var_map[ "hscale" ] = '1024';
-    var_map[ "vscale" ] = '864';
     applied = true;
     while ( applied ) {
         applied = false;
@@ -227,15 +209,17 @@ function flatten_vars( vars ) {
     return var_map;
 }
 
-function expand_view( v, vars ) {
-    // need vscale and hscale
+function expand_view( v, x, y ) {
     sources = [];
     results = [];
     vars = [];
     visited = [];
     traverse_view( v, sources, vars, visited );
+    let scalefactor = Math.sqrt( sources.length );
     for ( let s in sources ) {
         var_map = flatten_vars( sources[s].vars );
+        var_map[ 'hscale' ] = x / scalefactor;
+        var_map[ 'vscale' ] = y / scalefactor;
         for ( let v in var_map ) {
             res = '{{' + v + '}}';
             res = res.replace( /[-\/\\^$*+?.()|[\]{}]/g, '\\$&' );
@@ -249,7 +233,7 @@ function expand_view( v, vars ) {
 }
 
 config = readConfig();
-views = readViews();
+readViews();
 
 function readViews() {
     for ( let v of config.views ) {
@@ -258,18 +242,10 @@ function readViews() {
             view_map[ v.key ] = v.name;
         }
     }
-    for ( let v in view_map ) {
-        sources = expand_view( views[ view_map[ v ] ] );
-        console.log( v + ' ' + view_map[ v ] );
-        console.log( sources );
-    }
+    view_list = Object.keys(view_map);
 }
 
-function readChannels() {
-  return config.channels;
-}
-
-let channels = readChannels();
+let channels = config.channels;
 
 function saveConfig() {
   streams.forEach(((stream) => {
@@ -287,14 +263,14 @@ function saveConfig() {
   }
   fs.writeFileSync(path, JSON.stringify(configFile, null, 1), 'UTF-8');
   config = readConfig();
-  channels = readChannels();
+  channels = config.channels;
 }
 
 function readCurrentChannel() {
   const currentChannelFile = '.currentChannel';
   if (fs.existsSync(currentChannelFile)) {
     const curJson = JSON.parse(fs.readFileSync(currentChannelFile, 'UTF-8'));
-    currentChannel = channels[Number(curJson.currentChannel)-1] ? Number(curJson.currentChannel) : 0;
+    currentChannel = curJson.currentChannel;
     width = Number(curJson.width);
     height = Number(curJson.height);
   } else {
@@ -343,6 +319,14 @@ async function recreateStream() {
   readCurrentChannel();
   console.log('current channel is: ' + currentChannel);
 
+  if (config.views) {
+      if ( view_map[ currentChannel ] ) {
+          console.log( view_map[ currentChannel ] );
+          view = expand_view( views[ view_map[ currentChannel ] ], width, height );
+          console.log( view );
+      }
+      return;
+  }
   if (currentChannel != 0 ) {
     const selectChannel = channels[currentChannel-1];
     for (let i = 0; i < mode; i++) { // eslint-disable-line no-plusplus
