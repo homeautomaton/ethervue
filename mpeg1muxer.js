@@ -9,65 +9,12 @@ events = require('events')
 Mpeg1Muxer = function (options) {
     var key
     this.cmd = options.cmd
-    this.url = options.url
-    this.ffmpegOptions = options.ffmpegOptions
-    const ffmpegOptionsDefault = {
-        '-f': 'mpegts',
-        '-codec:v': 'mpeg1video',
-    }
-    this.ffmpegChannelPre = options.ffmpegPreOptions;
     this.exitCode = undefined
     this.signal = undefined
     this.killed = false;
-    this.additionalFlags = []
-    this.additionalPreFlags = []
-    if (this.ffmpegOptions) {
-        for (key in this.ffmpegOptions) {
-            if (ffmpegOptionsDefault[key] != null) {
-                ffmpegOptionsDefault[key] = String(this.ffmpegOptions[key]);
-            } else {
-                this.additionalFlags.push(key)
-                if (String(this.ffmpegOptions[key]) !== '') {
-                    this.additionalFlags.push(String(this.ffmpegOptions[key]))
-                }
-            }
-        }
-    }
-    if (this.ffmpegChannelPre) {
-        for (key in this.ffmpegChannelPre) {
-            this.additionalPreFlags.push(key)
-            if (String(this.ffmpegChannelPre[key]) !== '') {
-                this.additionalPreFlags.push(String(this.ffmpegChannelPre[key]))
-            }
-        }
-    }
-
-    if (ffmpegOptionsDefault) {
-        for (key in ffmpegOptionsDefault) {
-            this.additionalFlags.push(key)
-            if (String(ffmpegOptionsDefault[key]) !== '') {
-                this.additionalFlags.push(String(ffmpegOptionsDefault[key]))
-            }
-        }
-    }
-
-    this.spawnOptions = [
-        ...this.additionalPreFlags,
-        "-i",
-        this.url,
-        // additional ffmpeg options go here
-        ...this.additionalFlags,
-        '-'
-    ]
-    if ( this.cmd ) {
-        this.stream = child_process.spawn("/bin/bash", [ "-c", this.cmd ], {
-            detached: false
-        });
-    } else {
-        this.stream = child_process.spawn(options.ffmpegPath, this.spawnOptions, {
-            detached: false
-        });
-    }
+    this.stream = child_process.spawn("/bin/bash", [ "-c", this.cmd ], {
+        detached: false
+    });
     this.kill=()=>{
         this.killed=true;
         this.stream.kill();
