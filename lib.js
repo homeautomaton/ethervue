@@ -42,7 +42,7 @@ sel0 : ( function sel0(c) {
 }),
 
 sel : ( function sel(c) {
-  lib.queue.push(c);
+  lib.queue.push(c.toUpperCase());
   notice.innerHTML=lib.queue.join("")
   if (!lib.changeChannel) {
     lib.changeChannel = true;
@@ -51,7 +51,7 @@ sel : ( function sel(c) {
       var newch = lib.queue.join("");
       lib.changeChannel = false;
       lib.queue = [];
-      lib.sel0(parseInt(newch));
+      lib.sel0(newch);
     }, 1000);
   }
 }),
@@ -75,12 +75,12 @@ render : ( function render(resp) {
   lib.loadExpected = true;
 
   currentChannel = resp.currentChannel;
-  channelCount = resp.channelCount;
+  currentTitle = resp.currentTitle;
   var notice = document.getElementById("notice");
   if (currentChannel == 0) {
     notice.innerHTML = 'OFF';
   } else {
-    notice.innerHTML = currentChannel + " of " + channelCount;
+    notice.innerHTML = currentTitle;
   }
   var lastFrames = -1;
 

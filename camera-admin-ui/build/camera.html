@@ -44,6 +44,8 @@
               frames = 0;
               if ( keyValue >= '0' && keyValue <= '9' ) {
                  lib.sel(keyValue);
+              } else if ( keyValue >= 'a' && keyValue <= 'd' ) {
+                 lib.sel(keyValue);
               } else if ( keyValue == 'ArrowUp' || keyValue == 'ArrowRight' ) {
                  notice.innerHTML = '+';
                  lib.next();

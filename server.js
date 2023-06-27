@@ -44,7 +44,7 @@ const corsOptions = {
   maxAge: 3600,
 };
 
-let currentChannel = 0;
+let currentChannel = '1';
 let width = 1920;
 let height = 1080;
 let view_map = {};
@@ -274,7 +274,7 @@ function readCurrentChannel() {
     width = Number(curJson.width);
     height = Number(curJson.height);
   } else {
-    currentChannel = 0;
+    currentChannel = '0';
     width = 1920;
     width = 1080;
   }
@@ -287,8 +287,8 @@ function saveCurrentChannel() {
 
 function getMode() {
   let mode;
-  if (channels[currentChannel-1] && Array.isArray(channels[currentChannel-1].streamUrl)) {
-    mode = Math.ceil(Math.sqrt(channels[currentChannel-1].streamUrl.length)) ** 2;
+  if (view_map[currentChannel]) {
+    mode = Math.ceil(Math.sqrt(views[view_map[currentChannel]].gallery.length)) ** 2;
   } else {
     mode = 1;
   }
@@ -490,11 +490,11 @@ app.get('/reload', async (req, res) => {
 app.get('/info', cors(corsOptions), (req, res) => {
   readCurrentChannel();
   const mode = getMode();
-  const channelCount = channels.length;
+  const currentTitle = views[ view_map[ currentChannel ] ].name;
   return res.send(JSON.stringify({
     mode,
     currentChannel,
-    channelCount,
+    currentTitle,
   }));
 });
 
