@@ -153,6 +153,18 @@ var main = function main() {
       case 57:
         lib.sel(e.keyCode - 48);
         break;
+      case 403:
+        lib.sel('A');
+        break;
+      case 404:
+        lib.sel('B');
+        break;
+      case 405:
+        lib.sel('C');
+        break;
+      case 406:
+        lib.sel('D');
+        break;
       case 38: // UP arrow
       case 39: // RIGHT arrow
       case 427:
@@ -180,10 +192,6 @@ var main = function main() {
       case 406:
       case 10190:
       case 198:
-      case 403:
-      case 404:
-      case 405:
-      case 406:
       case 10190:
       case 10252:
       case 417:
