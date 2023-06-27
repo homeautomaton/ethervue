@@ -1,6 +1,6 @@
 { http: ( { 
 queue : [],
-changeChannel : false,
+changeView : false,
 loadExpected : false,
 
 req : ( function req( path ) {
@@ -38,18 +38,18 @@ prev : ( function prev() {
 }),
 
 sel0 : ( function sel0(c) {
-  lib.dorequest('/sel?channel=' + c + '&width=' + window.screen.width + '&height=' + window.screen.height);
+  lib.dorequest('/sel?view=' + c + '&width=' + window.screen.width + '&height=' + window.screen.height);
 }),
 
 sel : ( function sel(c) {
   lib.queue.push(c.toUpperCase());
   notice.innerHTML=lib.queue.join("")
-  if (!lib.changeChannel) {
-    lib.changeChannel = true;
+  if (!lib.changeView) {
+    lib.changeView = true;
     window.setTimeout(function () {
       var ch = { value: '' };
       var newch = lib.queue.join("");
-      lib.changeChannel = false;
+      lib.changeView = false;
       lib.queue = [];
       lib.sel0(newch);
     }, 1000);
@@ -74,14 +74,9 @@ render : ( function render(resp) {
   lib.initFullScreen();
   lib.loadExpected = true;
 
-  currentChannel = resp.currentChannel;
-  currentTitle = resp.currentTitle;
+  currentView = resp.currentView;
   var notice = document.getElementById("notice");
-  if (currentChannel == 0) {
-    notice.innerHTML = 'OFF';
-  } else {
-    notice.innerHTML = currentTitle;
-  }
+  notice.innerHTML = resp.currentTitle;
   var lastFrames = -1;
 
   setInterval(function() { if ( frames == lastFrames ) { notice.innerHTML = "Video Stalled"; frames = 0; lastFrames = -1 } else { lastFrames = frames } } , 10000);
