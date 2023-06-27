@@ -168,6 +168,10 @@ function expand_view( v, x, y ) {
     let scalefactor = Math.sqrt( sources.length );
     for ( let s in sources ) {
         var_map = flatten_vars( sources[s].vars );
+        if ( 'rotation-time' in var_map ) {
+            scalefactor = 1;
+            var_map[ 'time-option' ] = '-t ' + var_map[ 'rotation-time' ];
+        }
         var_map[ 'hscale' ] = x / scalefactor;
         var_map[ 'vscale' ] = y / scalefactor;
         for ( let v in var_map ) {
@@ -177,7 +181,7 @@ function expand_view( v, x, y ) {
             sources[s].source = sources[s].source.replace( re, var_map[ v ] );
         }
         if ( var_map.key !== undefined )
-            results.push( sources[s].source );
+            results.push( { "source" : sources[s].source, "var_map" : var_map } );
     }
     return results;
 }
@@ -233,13 +237,13 @@ function saveCurrentView() {
 }
 
 function getMode() {
-  let mode;
   if (view_map[currentView]) {
-    mode = Math.ceil(Math.sqrt(views[view_map[currentView]].gallery.length)) ** 2;
+    if ( 'rotation-time' in views[view_map[currentView]] )
+        return 1;
+    return Math.ceil(Math.sqrt(views[view_map[currentView]].gallery.length)) ** 2;
   } else {
-    mode = 1;
+    return 1;
   }
-  return mode;
 }
 
 readCurrentView();
@@ -256,6 +260,19 @@ function clientClose( stream ) {
   }
 }
 
+function newStream( options ) {
+  const stream = new Stream(
+      options
+      );
+  stream.mpeg1Muxer.on('exitWithError', () => {
+    recreateStream();
+  });
+  stream.mpeg1Muxer.on('exitWithoutError', () => {
+    recreateStream();
+  });
+  return stream;
+}
+
 async function recreateStream() {
   streams.forEach(((stream) => {
     stream.mpeg1Muxer.kill();
@@ -265,23 +282,30 @@ async function recreateStream() {
   const mode = getMode();
   readCurrentView();
   console.log('current view is: ' + currentView);
+  cmd = '';
 
   if ( view_map[ currentView ] ) {
       view = expand_view( views[ view_map[ currentView ] ], width, height );
       for ( var i = 0; i < view.length; i += 1 ) {
-          const stream = new Stream({
-            name: `${currentView} ${i}`,
-            cmd: view[i],
-            wsPort: 9999 + i,
-            onClientClose : clientClose
-          });
-          stream.mpeg1Muxer.on('exitWithError', () => {
-            recreateStream();
-          });
-          stream.mpeg1Muxer.on('exitWithoutError', () => {
-            recreateStream();
-          });
-          streams.push(stream);
+          if ( 'rotation-time' in var_map ) {
+              cmd += view[i].source + '; '
+          } else {
+              stream = newStream({
+                  name: `${currentView} ${i}`,
+                  cmd: view[i].source,
+                  wsPort: 9999 + i,
+                  onClientClose : clientClose
+              } );
+              streams.push(stream);
+          }
+      }
+      if ( cmd !== '' ) {
+          streams.push( newStream({
+                                    name: `${currentView}`,
+                                    cmd: 'while true; do ' + cmd + ' done',
+                                    wsPort: 9999,
+                                    onClientClose : clientClose 
+                        } ) );
       }
   }
 }
