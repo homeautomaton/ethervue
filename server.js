@@ -163,26 +163,26 @@ function flatten_vars( vars ) {
     return var_map;
 }
 
-function expand_view( v, x, y ) {
+function expand_view( v, mode, x, y ) {
     sources = [];
     results = [];
     vars = [];
     visited = [];
     traverse_view( v, sources, vars, visited );
-    let scalefactor = Math.sqrt( sources.length );
+    let scalefactor = Math.sqrt( mode );
+
     for ( let s in sources ) {
         let var_map = flatten_vars( sources[s].vars );
-        if ( 'cycle-time' in var_map ) {
-            scalefactor = 1;
-        }
+
         var_map[ 'hscale' ] = x / scalefactor;
         var_map[ 'vscale' ] = y / scalefactor;
+
         for ( let v in var_map ) {
             re = replre( '{{' + v + '}}' );
             sources[s].source = sources[s].source.replace( re, var_map[ v ] );
         }
         if ( var_map.key !== undefined )
-            results.push( { "source" : sources[s].source, "var_map" : var_map } );
+            results.push( { "source" : sources[s].source, "var_map" : {...var_map} } );
     }
     return results;
 }
@@ -288,9 +288,11 @@ async function recreateStream() {
   let exitCheck = "ppid=$(ps -o ppid= -p $$); if [ $ppid = '1' ]; then exit; fi; ".replace('$','$$$$');
   let cycleCmd = "while true; do {{cmd}} done";
   let cyclere = replre( "{{cmd}}" );
+  let port = 9999
 
   if ( view_map[ currentView ] ) {
-      view = expand_view( views[ view_map[ currentView ] ], width, height );
+      console.log( mode + ' ' + width + ' ' + height );
+      view = expand_view( views[ view_map[ currentView ] ], mode, width, height );
       for ( var i = 0; i < view.length; i += 1 ) {
           if ( 'cycle-cmd' in view[i].var_map ) cycleCmd = view[i].var_map[ 'cycle-cmd' ].replace('$','$$$$');
           if ( 'exit-check' in view[i].var_map ) exitCheck = view[i].var_map[ 'exit-check' ].replace('$','$$$$');
@@ -300,24 +302,25 @@ async function recreateStream() {
               stream = newStream({
                   name: `${currentView} ${i}`,
                   cmd: view[i].source,
-                  wsPort: 9999 + i,
+                  wsPort: port,
                   onClientClose : clientClose
               } );
               streams.push(stream);
+              port += 1;
           }
       }
       if ( cmd !== '' ) {
           streams.push( newStream({
                                     name: `${currentView}`,
                                     cmd: cycleCmd.replace( cyclere, cmd ),
-                                    wsPort: 9999,
+                                    wsPort: port,
                                     onClientClose : clientClose 
                         } ) );
       }
   }
 }
 
-// recreateStream().then();
+//recreateStream().then();
 
 app.get('/lib.js', async (req, res) => {
   const fs = require('fs');
@@ -367,7 +370,7 @@ app.get('/prev', async (req, res) => {
 
 app.get('/sel', async (req, res) => {
   const view = req.query.view;
-  console.log(req.query);
+
   if (view) {
     currentView = view;
   }
@@ -393,6 +396,8 @@ app.get('/reload', async (req, res) => {
   if (height0) {
     height = height0;
   }
+  config = readConfig();
+  readViews();
   saveCurrentView();
   await recreateStream();
   return res.send('OK');
