@@ -129,6 +129,11 @@ function traverse_view( t, sources, vars, visited ) {
     vars.pop();
 }
 
+function replre( s ) {
+    res = s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    return new RegExp(res, 'g');
+}
+
 function flatten_vars( vars ) {
     var_map = {}
     for ( let l in vars ) 
@@ -145,8 +150,7 @@ function flatten_vars( vars ) {
         for ( let v in var_map ) {
             if ( !var_map[v].includes( '{{' ) ) {
                 s = '{{' + v + '}}';
-                res = s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-                var re = new RegExp(res, 'g');
+                re = replre( s );
                 for ( let t in var_map ) {
                     if ( var_map[t].includes( s ) ) {
                         applied = true;
@@ -167,17 +171,14 @@ function expand_view( v, x, y ) {
     traverse_view( v, sources, vars, visited );
     let scalefactor = Math.sqrt( sources.length );
     for ( let s in sources ) {
-        var_map = flatten_vars( sources[s].vars );
-        if ( 'rotation-time' in var_map ) {
+        let var_map = flatten_vars( sources[s].vars );
+        if ( 'cycle-time' in var_map ) {
             scalefactor = 1;
-            var_map[ 'time-option' ] = '-t ' + var_map[ 'rotation-time' ];
         }
         var_map[ 'hscale' ] = x / scalefactor;
         var_map[ 'vscale' ] = y / scalefactor;
         for ( let v in var_map ) {
-            res = '{{' + v + '}}';
-            res = res.replace( /[-\/\\^$*+?.()|[\]{}]/g, '\\$&' );
-            var re = new RegExp( res, 'g' );
+            re = replre( '{{' + v + '}}' );
             sources[s].source = sources[s].source.replace( re, var_map[ v ] );
         }
         if ( var_map.key !== undefined )
@@ -238,7 +239,7 @@ function saveCurrentView() {
 
 function getMode() {
   if (view_map[currentView]) {
-    if ( 'rotation-time' in views[view_map[currentView]] )
+    if ( 'cycle-time' in views[view_map[currentView]] )
         return 1;
     return Math.ceil(Math.sqrt(views[view_map[currentView]].gallery.length)) ** 2;
   } else {
@@ -284,11 +285,17 @@ async function recreateStream() {
   console.log('current view is: ' + currentView);
   cmd = '';
 
+  let exitCheck = "ppid=$(ps -o ppid= -p $$); if [ $ppid = '1' ]; then exit; fi; ".replace('$','$$$$');
+  let cycleCmd = "while true; do {{cmd}} done";
+  let cyclere = replre( "{{cmd}}" );
+
   if ( view_map[ currentView ] ) {
       view = expand_view( views[ view_map[ currentView ] ], width, height );
       for ( var i = 0; i < view.length; i += 1 ) {
-          if ( 'rotation-time' in var_map ) {
-              cmd += view[i].source + '; '
+          if ( 'cycle-cmd' in view[i].var_map ) cycleCmd = view[i].var_map[ 'cycle-cmd' ].replace('$','$$$$');
+          if ( 'exit-check' in view[i].var_map ) exitCheck = view[i].var_map[ 'exit-check' ].replace('$','$$$$');
+          if ( 'cycle-time' in view[i].var_map ) {
+              cmd += view[i].source + '; ' + exitCheck
           } else {
               stream = newStream({
                   name: `${currentView} ${i}`,
@@ -302,7 +309,7 @@ async function recreateStream() {
       if ( cmd !== '' ) {
           streams.push( newStream({
                                     name: `${currentView}`,
-                                    cmd: 'while true; do ' + cmd + ' done',
+                                    cmd: cycleCmd.replace( cyclere, cmd ),
                                     wsPort: 9999,
                                     onClientClose : clientClose 
                         } ) );
@@ -310,7 +317,7 @@ async function recreateStream() {
   }
 }
 
-recreateStream().then();
+// recreateStream().then();
 
 app.get('/lib.js', async (req, res) => {
   const fs = require('fs');
@@ -393,10 +400,12 @@ app.get('/reload', async (req, res) => {
 
 app.get('/info', cors(corsOptions), (req, res) => {
   readCurrentView();
-  const mode = getMode();
   var currentTitle = 'OFF';
-  if ( currentView !== '0' )
+  var mode = 1;
+  if ( currentView in view_map ) {
       currentTitle = views[ view_map[ currentView ] ].name;
+      mode = getMode();
+  }
   return res.send(JSON.stringify({
     mode,
     currentView,
