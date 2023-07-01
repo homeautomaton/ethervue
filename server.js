@@ -9,17 +9,28 @@ const Stream = require('./index');
 
 // TODO:   
 //         default to no login, add option to enable
+//         strip down Config.js, write instructions for templating
+//         default to no login, add option to enable
 //         on-screen status/help display(s) in TV and web apps
 
-//       x enable a/b/c/d buttons for cam selection
 //         improve UI of TV app, for configuring address and port
 //         move content of .currentView to cookie
 //         let different clients stream different cams
-//             persistent URLs(?)
+//             persistent URLs(?), cookie?
 //
+//         fix OS compatibility in mpeg1muxer.js:
+//             child_process.spawn("/bin/bash", [ "-c", this.cmd ], {
+//
+//         open a (second) websocket for server to send status updates
+//
+//         ONVIF?
 //         AUDIO?
 //         PTZ controls?
-//         Templates, break out params like IP & PORT?
+//
+//         check out https://github.com/k-yle/rtsp-relay
+//         also: ffmpeg -re -stream_loop -1   -rtsp_transport tcp -i rtsp://yourscameraorginalstream -c copy -acodec aac  -f rtsp rtsp://ipofyourmachine:8554/mystream
+//         https://marcochiappetta.medium.com/how-to-stream-rtsp-on-the-web-using-web-sockets-and-canvas-d821b8f7171e
+//         node-rtsp-stream
 
 // To Document:
 //         -vf:drawtext='fontsize=30:fontcolor=white:x=100:y=100:text=[`c`] %{localtime}'

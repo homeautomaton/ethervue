@@ -11,6 +11,8 @@
         var lib;
         var showKeys = false;
         var frames = 0;
+        var players = [];
+        var stash_resp;
 
         var serverInfo = {
             ip: window.location.hostname || 'localhost', // <-- Server IP
@@ -130,6 +132,16 @@
   transform: translate(-50%, -50%);
 } 
 
+.front {
+  font-size: 200px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 99;
+} 
+
+
     </style>
 </head>
 
@@ -137,14 +149,29 @@
  <div class="container">
 <table id="canvas" class="canvas" BGCOLOR="#000000" BORDER=0 CELLSPACING=0 CELLPADDING=0>
 </table>
-  <div class="centered" id="notice"></div>
+  <div class="centered" id="notice">
+</div>
 </div> 
+<div class="front" id="clickme">
+<form>
+<button class="play" id="play" type="button">Play</button>
+</form>
+</div>
 </body>
 <script type="text/javascript" src="jsmpeg.min.js"></script>
 <script type="text/javascript">
     load_lib( () => reload(() => getInfo((resp) => {
         install_handlers();
+        stash_resp = resp;
         lib.render(resp);
     })) );
+    play.onclick = function() {
+        lib.render(stash_resp);
+        for (let p in players) {
+            players[p].volume = 1;
+        //    players[p].play();
+        //    alert('there');
+        }
+    }
 </script>
 </html>

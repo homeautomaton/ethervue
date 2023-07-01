@@ -95,9 +95,11 @@ render : ( function render(resp) {
   table.innerHTML = trs.join('\n')
   for (let i = 0; i < mode; i++) {
       const url = 'ws://' + serverInfo.ip + ':' + (9999 + i);
-      new JSMpeg.Player(url, {
+      players = [];
+      let player = new JSMpeg.Player(url, {
           canvas: document.getElementById('canvas' + (i + 1)),
           onVideoDecode: function ondecode( ) { if ( frames == 60 ) { lib.loadExpected = false; frames = 61; notice.innerHTML = ""; } else if ( frames > 1000000 ) { frames = 10000 } else { frames = frames + 1 } },
+          // onAudioDecode: function ondecode2( ) { if ( frames < 2000 ) notice.innerHTML = 'audio' },
       
           disableGl : true,
           onSourceEstablished: function sourceEstablished( ) { lib.handleSourceEstablished(); }
@@ -108,6 +110,7 @@ render : ( function render(resp) {
           // onStalled: function d( ) { notice.innerHTML = "d" },
           // onSourceCompleted: function f( ) { notice.innerHTML = "f" },
       })
+      players.push( player );
   }
 } ),
 
