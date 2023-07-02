@@ -14,6 +14,8 @@ var serverInfo = {
 var lib;
 var showKeys = false;
 var frames = 0;
+var players = [];
+var stash_resp;
 
 var req = function req( path ) {
   var xhr = new XMLHttpRequest();
