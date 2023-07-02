@@ -42,7 +42,7 @@ sel0 : ( function sel0(c) {
 }),
 
 sel : ( function sel(c) {
-  lib.queue.push(c.toUpperCase());
+  lib.queue.push(c.toString().toUpperCase());
   notice.innerHTML=lib.queue.join("")
   if (!lib.changeView) {
     lib.changeView = true;
