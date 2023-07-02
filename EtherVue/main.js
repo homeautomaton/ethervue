@@ -12,7 +12,6 @@ var serverInfo = {
 };
 
 var lib;
-var showKeys = false;
 var frames = 0;
 var players = [];
 var stash_resp;
@@ -153,65 +152,98 @@ var main = function main() {
       case 55:
       case 56:
       case 57:
-        lib.sel(e.keyCode - 48);
+        lib.key(e.keyCode - 48);
         break;
       case 403:
-        lib.sel('A');
+        lib.key('A');
         break;
       case 404:
-        lib.sel('B');
+        lib.key('B');
         break;
       case 405:
-        lib.sel('C');
+        lib.key('C');
         break;
       case 406:
-        lib.sel('D');
+        lib.key('D');
         break;
-      case 38: // UP arrow
-      case 39: // RIGHT arrow
       case 427:
-        notice.innerHTML='+';
-        lib.next();
+        lib.key('Channel+');
         break;
-      case 37: // LEFT arrow
-      case 40: // DOWN arrow
       case 428:
-        notice.innerHTML='-';
-        lib.prev();
+        lib.key('Channel-');
         break;
-      case 13: // OK button
-        notice.innerHTML='Reload';
-        reload();
+      case 415:  // MediaPlay
+        lib.key('MediaPlay');
         break;
       case 10009: // RETURN button
+        lib.key('TVReturn');
+        break;
       case 10182: // EXIT button
         notice.innerHTML='EXIT';
         tizen.application.getCurrentApplication().exit();
         break;
-      case 403:
-      case 404:
-      case 405:
-      case 406:
+      case 13: // OK button
+        lib.key('Ok');
+        break;
+      case 38: // UP arrow
+        lib.key('UpArrow');
+        break;
+      case 39: // RIGHT arrow
+        lib.key('RightArrow');
+        break;
+      case 37: // LEFT arrow
+        lib.key('LeftArrow');
+        break;
+      case 40: // DOWN arrow
+        lib.key('DownArrow');
+        break;
       case 10190:
+        lib.key('PreviousChannel');
+        break;
       case 198:
-      case 10190:
+        lib.key('Minus');
+        break;
       case 10252:
+        lib.key('MediaPlayPause');
+        break;
       case 417:
+        lib.key('MediaFastForward');
+        break;
       case 412:
-      case 415:
+        lib.key('MediaRewind');
+        break;
       case 413:
+        lib.key('MediaStop');
+        break;
       case 10232:
+        lib.key('MediaTrackPrevious');
+        break;
       case 10233:
+        lib.key('MediaTrackNext');
+        break;
       case 19:
+        lib.key('MediaPause');
+        break;
       case 449:
+        lib.key('VolumeMute');
+        break;
       case 18:
+        lib.key('Menu');
+        break;
       case 10135:
+        lib.key('Tools');
+        break;
       case 457:
+        lib.key('Info');
+        break;
       case 10072:
+        lib.key('Source');
+        break;
       case 10140:
+        lib.key('PictureSize');
+        break;
       case 10073:
-        notice.innerHTML='Refresh';
-        location.reload(); //  soft reload
+        lib.key('ChannelList');
         break;
 
       default:

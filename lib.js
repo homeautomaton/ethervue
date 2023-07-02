@@ -2,6 +2,36 @@
 queue : [],
 changeView : false,
 loadExpected : false,
+showKeys : false,
+
+key : ( function key( k ) {
+    k = k.toString();
+    if ( lib.showKeys ) notice.innerHTML = k;
+    if ( k >= '0' && k <= '9' || k >= 'A' && k <= 'D' ) {
+      lib.sel( k );
+    } else if ( k == 'Channel+' ) {
+      lib.next();
+    } else if ( k == 'Channel-' ) {
+      lib.prev();
+    } else if ( k == 'MediaPlay' ) {
+      notice.innerHTML='Reload';
+      reload();
+    } else if ( k == 'PrevChannel' ) {
+      notice.innerHTML='Refresh';
+      location.reload();
+    } else if ( k == 'Escape' ) {
+      notice.innerHTML = 'Reload';
+      reload();
+    } else if ( k == 'r' ) {
+      notice.innerHTML = 'Refresh';
+      location.reload();
+    } else if ( k == 'f' ) {
+      notice.innerHTML = 'Fullscreen';
+      lib.fullScreen();
+    } else if ( k == '|' ) {
+      lib.showKeys = ! lib.showKeys;
+    }
+} ),
 
 req : ( function req( path ) {
   var xhr = new XMLHttpRequest();

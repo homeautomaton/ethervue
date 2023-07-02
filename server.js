@@ -118,22 +118,22 @@ function traverse_view( t, sources, vars, visited ) {
     visited[ t.name ] = 1;
     local_vars = {}
     for ( let v in t ) {
-        if ( v != 'name' && v != 'gallery' )
+        if ( v != 'name' && v != 'sources' )
            local_vars[ v ] = t[ v ];
     }
     vars.push( local_vars );
-    for ( let g in t.gallery ) {
+    for ( let g in t.sources ) {
         more_vars = {}
-        for ( let v in t.gallery[ g ] ) {
+        for ( let v in t.sources[ g ] ) {
             if ( v != 'source' && v != 'view' )
-               more_vars[ v ] = t.gallery[ g ][ v ];
+               more_vars[ v ] = t.sources[ g ][ v ];
         }
         vars.push( more_vars );
-        if ( t.gallery[ g ].source ) {
-            sources.push( {"source" : t.gallery[ g ].source, "vars" : {...vars} });
+        if ( t.sources[ g ].source ) {
+            sources.push( {"source" : t.sources[ g ].source, "vars" : {...vars} });
         }
-        if ( t.gallery[ g ].view ) {
-            traverse_view( views[ t.gallery[ g ].view ], sources, vars, visited );
+        if ( t.sources[ g ].view ) {
+            traverse_view( views[ t.sources[ g ].view ], sources, vars, visited );
         }
         vars.pop();
     }
@@ -252,7 +252,7 @@ function getMode() {
   if (view_map[currentView]) {
     if ( 'cycle-time' in views[view_map[currentView]] )
         return 1;
-    return Math.ceil(Math.sqrt(views[view_map[currentView]].gallery.length)) ** 2;
+    return Math.ceil(Math.sqrt(views[view_map[currentView]].sources.length)) ** 2;
   } else {
     return 1;
   }
