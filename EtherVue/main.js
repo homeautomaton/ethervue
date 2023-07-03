@@ -103,7 +103,7 @@ var main = function main() {
   let remotekeys = ['0','1','2','3','4','5','6','7','8','9',
        'ChannelUp',
        'ChannelDown',
-       'Minus',                 //198
+       'Minus',                 //189
        'ColorF0Red',            //403
        'ColorF1Green',          //404
        'ColorF2Yellow',         //405
@@ -118,14 +118,25 @@ var main = function main() {
        'MediaTrackNext',        //10233
        'MediaPause',            //19
        'VolumeMute',            //449
-       'Menu',                  //18
+       'Menu',                  //10133
+       'Guide',                 //458   
        'Tools',                 //10135
        'Info',                  //457
        'Source',                //10072
        'Exit',                  //10182
        'PictureSize',           //10140
        'ChannelList',           //10073
+       'Search',                //10225
+       'MediaRecord',           //416
+       'E-Manual',              //10146
+       'MTS',                   //10195
+       '3D',                    //10199
+       'Soccer',                //10228
+       'Caption',               //10221
+       'Teletext',              //10200
+       'Extra'                  //10253
      ];
+
   for ( let k in remotekeys ) {
     try {
        tizen.tvinputdevice.registerKey(remotekeys[k]);
@@ -200,7 +211,7 @@ var main = function main() {
       case 10190:
         lib.key('PreviousChannel');
         break;
-      case 198:
+      case 189:
         lib.key('Minus');
         break;
       case 10252:
@@ -227,7 +238,10 @@ var main = function main() {
       case 449:
         lib.key('VolumeMute');
         break;
-      case 18:
+      case 458:
+        lib.key('Guide');
+        break;
+        case 10133:
         lib.key('Menu');
         break;
       case 10135:
@@ -245,6 +259,23 @@ var main = function main() {
       case 10073:
         lib.key('ChannelList');
         break;
+
+      case 416:
+        lib.key('MediaRecord');
+      case 10146:
+        lib.key('E-Manual');
+      case 10195:
+        lib.key('MTS');  
+      case 10199:
+        lib.key('3D');   
+      case 10228:
+        lib.key('Soccer');
+      case 10221:
+        lib.key('Caption');  
+      case 10200:
+        lib.key('Teletext'); 
+      case 10253:
+        lib.key('Extra');
 
       default:
         //console.log('Key code : ' + e.keyCode);

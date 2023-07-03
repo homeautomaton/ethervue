@@ -379,6 +379,10 @@ app.get('/prev', async (req, res) => {
   return res.send('OK');
 });
 
+app.get('/log', async (req, res) => {
+  console.log( req.query.text );
+});
+
 app.get('/sel', async (req, res) => {
   const view = req.query.view;
 
