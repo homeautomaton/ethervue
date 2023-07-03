@@ -2,13 +2,15 @@
 queue : [],
 changeView : false,
 loadExpected : false,
-showKeys : false,
+showKeys : true,
 
 key : ( function key( k ) {
     k = k.toString();
     if ( lib.showKeys ) notice.innerHTML = k;
-    if ( k >= '0' && k <= '9' || k >= 'A' && k <= 'D' ) {
+    if ( k.length == 1 && ( k >= '0' && k <= '9' || k >= 'A' && k <= 'D' ) ) {
       lib.sel( k );
+
+    // TV
     } else if ( k == 'Channel+' ) {
       lib.next();
     } else if ( k == 'Channel-' ) {
@@ -16,9 +18,11 @@ key : ( function key( k ) {
     } else if ( k == 'MediaPlay' ) {
       notice.innerHTML='Reload';
       reload();
-    } else if ( k == 'PrevChannel' ) {
+    } else if ( k == 'PreviousChannel' ) {
       notice.innerHTML='Refresh';
       location.reload();
+
+    // Browser
     } else if ( k == 'Escape' ) {
       notice.innerHTML = 'Reload';
       reload();
@@ -31,6 +35,9 @@ key : ( function key( k ) {
     } else if ( k == '|' ) {
       lib.showKeys = ! lib.showKeys;
     }
+} ),
+
+keyup : ( function keyup( k ) {
 } ),
 
 req : ( function req( path ) {
@@ -69,6 +76,10 @@ prev : ( function prev() {
 
 sel0 : ( function sel0(c) {
   lib.dorequest('/sel?view=' + c + '&width=' + window.screen.width + '&height=' + window.screen.height);
+}),
+
+log : ( function log(text) {
+  lib.dorequest('/log?text=' + text);
 }),
 
 sel : ( function sel(c) {

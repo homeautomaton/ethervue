@@ -149,6 +149,23 @@ var main = function main() {
   });
 
   // add eventListener for keydown
+  document.addEventListener('keyup', function (e) {
+    switch (e.keyCode) {
+      case 38: // UP arrow
+        lib.keyup('UpArrow');
+        break;
+      case 39: // RIGHT arrow
+        lib.keyup('RightArrow');
+        break;
+      case 37: // LEFT arrow
+        lib.keyup('LeftArrow');
+        break;
+      case 40: // DOWN arrow
+        lib.keyup('DownArrow');
+        break;
+    }
+  });
+
   document.addEventListener('keydown', function (e) {
     console.log('Key code : ' + e.keyCode);
     var notice = document.getElementById("notice");
