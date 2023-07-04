@@ -113,7 +113,6 @@ function readConfig() {
   return viewJSON;
 }
 
-
 function traverse_view( t, sources, vars, visited ) {
     visited[ t.name ] = 1;
     local_vars = {}
@@ -198,6 +197,8 @@ function expand_view( v, mode, x, y ) {
     return results;
 }
 
+//  setInterval( lib.repeater, 100);
+//
 config = readConfig();
 readViews();
 
@@ -381,6 +382,17 @@ app.get('/prev', async (req, res) => {
 
 app.get('/log', async (req, res) => {
   console.log( req.query.text );
+  return res.send('OK');
+});
+
+app.get('/keypress', async (req, res) => {
+  console.log( req.query.key );
+  return res.send('OK');
+});
+
+app.get('/keyup', async (req, res) => {
+  console.log( req.query.key + ' up');
+  return res.send('OK');
 });
 
 app.get('/sel', async (req, res) => {

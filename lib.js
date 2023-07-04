@@ -9,35 +9,53 @@ key : ( function key( k ) {
     if ( lib.showKeys ) notice.innerHTML = k;
     if ( k.length == 1 && ( k >= '0' && k <= '9' || k >= 'A' && k <= 'D' ) ) {
       lib.sel( k );
-
-    // TV
-    } else if ( k == 'Channel+' ) {
-      lib.next();
-    } else if ( k == 'Channel-' ) {
-      lib.prev();
-    } else if ( k == 'MediaPlay' ) {
-      notice.innerHTML='Reload';
-      reload();
-    } else if ( k == 'PreviousChannel' ) {
-      notice.innerHTML='Refresh';
-      location.reload();
+      return;
+    }
+    switch ( k ) {
+      case 'UpArrow':     // TV
+      case 'DownArrow':   // TV
+      case 'LeftArrow':   // TV
+      case 'RightArrow':  // TV
+      case 'ArrowUp':     // Browser
+      case 'ArrowDown':   // Browser
+      case 'ArrowLeft':   // Browser
+      case 'ArrowRight':  // Browser
+        lib.keypress(k);
+        break;
+      case 'Channel+': // TV
+      case '+':        // Browser
+        lib.next();
+        break;
+      case 'Channel-': // TV
+      case '-':        // Browser
+        lib.prev();
+        break;
+      case 'MediaPlay':
+        notice.innerHTML='Reload';
+        reload();
+        break;
+      case 'PreviousChannel':
+        notice.innerHTML='Refresh';
+        location.reload();
+        break;
 
     // Browser
-    } else if ( k == 'Escape' ) {
-      notice.innerHTML = 'Reload';
-      reload();
-    } else if ( k == 'r' ) {
-      notice.innerHTML = 'Refresh';
-      location.reload();
-    } else if ( k == 'f' ) {
-      notice.innerHTML = 'Fullscreen';
-      lib.fullScreen();
-    } else if ( k == '|' ) {
-      lib.showKeys = ! lib.showKeys;
+      case 'Escape':
+        notice.innerHTML = 'Reload';
+        reload();
+        break;
+      case 'r':
+        notice.innerHTML = 'Refresh';
+        location.reload();
+        break;
+      case 'f':
+        notice.innerHTML = 'Fullscreen';
+        lib.fullScreen();
+        break;
+      case '|':
+        lib.showKeys = ! lib.showKeys;
+        break;
     }
-} ),
-
-keyup : ( function keyup( k ) {
 } ),
 
 req : ( function req( path ) {
@@ -48,13 +66,13 @@ req : ( function req( path ) {
   return xhr;
 } ),
 
-dorequest : ( function dorequest( path ) {
+dorequest : ( function dorequest( path, reload ) {
   var xhr = lib.req( path );
   xhr.onreadystatechange = function () {
     if (xhr.readyState === xhr.DONE) {
       if (xhr.status === 200) {
         console.log(xhr.responseText);
-        location.reload();
+        if ( reload ) location.reload();
       } else {
         console.log('There was a problem with the request.');
       }
@@ -64,22 +82,42 @@ dorequest : ( function dorequest( path ) {
     console.log(xhr.statusText);
   };
   xhr.send();
+  return xhr;
 }),
 
 next : ( function next() {
-  lib.dorequest('/next?width=' + window.screen.width + '&height=' + window.screen.height);
+  lib.dorequest('/next?width=' + window.screen.width + '&height=' + window.screen.height, true);
 }),
 
 prev : ( function prev() {
-  lib.dorequest('/prev?width=' + window.screen.width + '&height=' + window.screen.height);
+  lib.dorequest('/prev?width=' + window.screen.width + '&height=' + window.screen.height, true);
 }),
 
 sel0 : ( function sel0(c) {
-  lib.dorequest('/sel?view=' + c + '&width=' + window.screen.width + '&height=' + window.screen.height);
+  lib.dorequest('/sel?view=' + c + '&width=' + window.screen.width + '&height=' + window.screen.height, true);
 }),
 
 log : ( function log(text) {
-  lib.dorequest('/log?text=' + text);
+  lib.dorequest('/log?text=' + text, false);
+}),
+
+keyup : ( function keyup(key) {
+  switch ( key ) {
+    case 'UpArrow':     // TV
+    case 'DownArrow':   // TV
+    case 'LeftArrow':   // TV
+    case 'RightArrow':  // TV
+    case 'ArrowUp':     // Browser
+    case 'ArrowDown':   // Browser
+    case 'ArrowLeft':   // Browser
+    case 'ArrowRight':  // Browser
+      lib.dorequest('/keyup?key=' + key, false);
+      break;
+  }
+}),
+
+keypress : ( function keypress(key) {
+  lib.dorequest('/keypress?key=' + key, false);
 }),
 
 sel : ( function sel(c) {
