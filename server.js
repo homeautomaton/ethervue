@@ -5,12 +5,11 @@ const bodyParser = require('body-parser');
 const mkdirp = require('mkdirp');
 const { exec } = require('child_process');
 const Stream = require('./index');
-
+var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 
 // TODO:   
 //         default to no login, add option to enable
 //         strip down Config.js, write instructions for templating
-//         default to no login, add option to enable
 //         on-screen status/help display(s) in TV and web apps
 
 //         improve UI of TV app, for configuring address and port
@@ -24,7 +23,6 @@ const Stream = require('./index');
 //         open a (second) websocket for server to send status updates
 //
 //         ONVIF?
-//         AUDIO?
 //         PTZ controls?
 //
 //         check out https://github.com/k-yle/rtsp-relay
@@ -64,6 +62,7 @@ let view_keys = {};    // key index into sorted list
 let views = {};
 let config = {};
 let streams = [];
+let controls = {};
 
 app.use(cors(corsOptions));
 // eslint-disable-next-line no-use-before-define
@@ -191,18 +190,30 @@ function expand_view( v, mode, x, y ) {
             re = replre( '{{' + v + '}}' );
             sources[s].source = sources[s].source.replace( re, var_map[ v ] );
         }
-        if ( var_map.key !== undefined )
-            results.push( { "source" : sources[s].source, "var_map" : {...var_map} } );
+        if ( var_map.key !== undefined ) {
+          if ( 'control' in var_map && var_map.control in controls ) {
+            urls = {}
+            for ( let c in controls[ var_map.control ] ) {
+              if ( c != 'name' ) {
+                urls[ c ] = controls[ var_map.control ][ c ];
+                for ( let v in var_map ) {
+                  re = replre( '{{' + v + '}}' );
+                  urls[c] = urls[c].replace( re, var_map[ v ] );
+                }
+              }
+            }
+            var_map[ 'control' ] = {...urls};
+          }
+          results.push( { "source" : sources[s].source, "var_map" : {...var_map} } );
+        }
     }
     return results;
 }
 
-//  setInterval( lib.repeater, 100);
-//
 config = readConfig();
-readViews();
+processConfig();
 
-function readViews() {
+function processConfig() {
     for ( let v of config.views ) {
         views[ v.name ] = v;
         if (v.key !== undefined) view_map[ v.key ] = v.name;
@@ -210,6 +221,9 @@ function readViews() {
     view_sort = Object.keys(view_map);
     for ( var i = 0; i < view_sort.length; i += 1 ) 
         view_keys[ view_sort[ i ] ] = i;
+    for ( let c of config.controls ) {
+        controls[ c.name ] = c;
+    }
 }
 
 function saveConfig() {
@@ -315,7 +329,8 @@ async function recreateStream() {
                   name: `${currentView} ${i}`,
                   cmd: view[i].source,
                   wsPort: port,
-                  onClientClose : clientClose
+                  onClientClose : clientClose,
+                  var_map: view[i].var_map
               } );
               streams.push(stream);
               port += 1;
@@ -385,22 +400,67 @@ app.get('/log', async (req, res) => {
   return res.send('OK');
 });
 
+function dorequest( url, username, password ) {
+  var xhr = new XMLHttpRequest();
+  xhr.withCredentials = true;
+  xhr.open('GET', url, true);
+  xhr.setRequestHeader("Authorization", "Basic " + Buffer.from(username+':'+password, 'utf8').toString('base64'));
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === xhr.DONE) {
+      if (xhr.status !== 200) {
+        console.log('There was a problem with the request. [' + xhr.status + ']');
+      }
+    }
+  };
+  xhr.onerror = function (e) {
+    console.log(xhr.statusText);
+  };
+  xhr.send();
+  return xhr;
+}
+
+function pan( dir ) {
+  if ( streams.length > 0 ) {
+    dorequest( streams[ 0 ].options.var_map.control[ dir ],
+               streams[ 0 ].options.var_map.username,
+               streams[ 0 ].options.var_map.password );
+  }
+}
+
 app.get('/keypress', async (req, res) => {
-  console.log( req.query.key );
+  try {
+    switch( req.query.key ) {
+      case 'UpArrow':     // TV
+      case 'ArrowUp':     // Browser
+        pan( 'up' );
+        break;
+      case 'LeftArrow':   // TV
+      case 'ArrowLeft':   // Browser
+        pan( 'left' );
+        break;
+      case 'RightArrow':  // TV
+      case 'ArrowRight':  // Browser
+        pan( 'right' );
+        break;
+      case 'DownArrow':   // TV
+      case 'ArrowDown':   // Browser
+        pan( 'down' );
+        break;
+    }
+  }
+  catch(err) { 
+      console.log(err);
+  }
   return res.send('OK');
 });
 
 app.get('/keyup', async (req, res) => {
-  console.log( req.query.key + ' up');
   return res.send('OK');
 });
 
 app.get('/sel', async (req, res) => {
   const view = req.query.view;
 
-  if (view) {
-    currentView = view;
-  }
   const width0 = req.query.width;
   if (width0) {
     width = width0;
@@ -409,8 +469,11 @@ app.get('/sel', async (req, res) => {
   if (height0) {
     height = height0;
   }
-  saveCurrentView();
-  await recreateStream();
+  if (view && ( view in view_map || view == '0' )) {
+    currentView = view;
+    saveCurrentView();
+    await recreateStream();
+  }
   return res.send('OK');
 });
 
@@ -424,7 +487,7 @@ app.get('/reload', async (req, res) => {
     height = height0;
   }
   config = readConfig();
-  readViews();
+  processConfig();
   saveCurrentView();
   await recreateStream();
   return res.send('OK');

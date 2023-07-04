@@ -2,7 +2,7 @@
 queue : [],
 changeView : false,
 loadExpected : false,
-showKeys : true,
+showKeys : false,
 
 key : ( function key( k ) {
     k = k.toString();
