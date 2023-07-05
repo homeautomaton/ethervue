@@ -42,6 +42,12 @@
               frames = 0;
               lib.key(keyValue);
             }, false);
+
+            document.addEventListener('keyup', (event) => {
+              var keyValue = event.key;
+              var codeValue = event.code;
+              lib.keyup(keyValue);
+            }, false);
         };
 
         var reload = (callback, error) => {
@@ -116,6 +122,23 @@
   z-index: 99;
 } 
 
+.overlay {
+  position: absolute;
+  color: white;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: 99;
+}
+
+.menu {
+  width: 33%;
+  height: 90%;
+  transform: translate(100%, 5%);
+  background-color: black;
+}
+
 
     </style>
 </head>
@@ -131,6 +154,8 @@
 <form>
 <button class="play" id="play" type="button">Play</button>
 </form>
+</div>
+<div class="overlay" id="info">
 </div>
 </body>
 <script type="text/javascript" src="jsmpeg.min.js"></script>

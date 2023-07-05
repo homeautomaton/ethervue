@@ -20,6 +20,17 @@
   left: 0; 
 }
 
+.overlay {
+  position: absolute;
+  text-align: center;
+  color: white;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: 99;
+}
+
 /* Centered text */
 .centered {
   font-size: 200px;
@@ -27,6 +38,13 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+.menu {
+  width: 33%;
+  height: 90%;
+  transform: translate(100%, 5%);
+  background-color: black;
 }
 
     </style>
@@ -37,6 +55,8 @@
 <table id="canvas" BGCOLOR="#000000" BORDER=0 CELLSPACING=0 CELLPADDING=0>
 </table>
   <div class="centered" id="notice"></div>
+</div>
+<div class="overlay" id="info">
 </div>
 </body>
 <script src="main.js"></script>

@@ -11,6 +11,16 @@ var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 //         default to no login, add option to enable
 //         strip down Config.js, write instructions for templating
 //         on-screen status/help display(s) in TV and web apps
+//              info
+//              guide
+//              ch list
+//              e-manual
+//              menu
+
+//         ptz presets set & recall
+//         turn on/off OSD on camera
+//         possible to scale movements according to zoom level?
+//         set time on camera ex: param.cgi?cmd=setservertime&-time=2011.08.23.10.35.08&-timezone=Asia%2FHong_Kong&-dstmode=off
 
 //         improve UI of TV app, for configuring address and port
 //         move content of .currentView to cookie
@@ -23,7 +33,6 @@ var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 //         open a (second) websocket for server to send status updates
 //
 //         ONVIF?
-//         PTZ controls?
 //
 //         check out https://github.com/k-yle/rtsp-relay
 //         also: ffmpeg -re -stream_loop -1   -rtsp_transport tcp -i rtsp://yourscameraorginalstream -c copy -acodec aac  -f rtsp rtsp://ipofyourmachine:8554/mystream
@@ -63,6 +72,9 @@ let views = {};
 let config = {};
 let streams = [];
 let controls = {};
+let zoom = false;
+let currentDisplay = '';
+let htmlText = {};
 
 app.use(cors(corsOptions));
 // eslint-disable-next-line no-use-before-define
@@ -155,7 +167,7 @@ function flatten_vars( vars ) {
     applied = true;
     while ( applied ) {
         applied = false;
-        // terrible n-squared algo here. not expecting a lot of variables, nor many with substitutions
+        // terrible n-squared algo here. not expecting a lot of variables, nor many deeply nested substitutions
         for ( let v in var_map ) {
             if ( !var_map[v].includes( '{{' ) ) {
                 s = '{{' + v + '}}';
@@ -182,9 +194,11 @@ function expand_view( v, mode, x, y ) {
 
     for ( let s in sources ) {
         let var_map = flatten_vars( sources[s].vars );
+        views[ view_map[ currentView ] ]
 
         var_map[ 'hscale' ] = x / scalefactor;
         var_map[ 'vscale' ] = y / scalefactor;
+        var_map[ 'name' ] = v.name;
 
         for ( let v in var_map ) {
             re = replre( '{{' + v + '}}' );
@@ -223,6 +237,9 @@ function processConfig() {
         view_keys[ view_sort[ i ] ] = i;
     for ( let c of config.controls ) {
         controls[ c.name ] = c;
+    }
+    for ( let t of config.text ) {
+        htmlText[ t.name ] = t.frames;
     }
 }
 
@@ -427,10 +444,91 @@ function pan( dir ) {
   }
 }
 
+function get_view_list( ) {
+    result = "";
+    for ( let v in view_map ) {
+        result += v + " " + views[ view_map[ v ] ].name + "<br>";
+    }
+    return result;
+}
+
+app.get('/display', async (req, res, next) => {
+  try {
+    switch( req.query.key) {
+      case 'ChannelList':
+      case 'c':
+          key = 'ChannelList';
+          break;
+
+      case 'Info':
+      case 'i':
+          key = 'Info';
+          break;
+
+      case 'Menu':
+      case 'm':
+          key = 'Menu';
+          break;
+
+      case 'Guide':
+      case 'g':
+          key = 'Guide';
+          break;
+
+      case 'E-Manual':
+      case 'e':
+      case '?':
+      case 'h':
+          key = 'E-Manual';
+          break;
+    }
+    if ( key == currentDisplay )
+        currentFrame += 1;
+    else
+        currentFrame = 0;
+    currentDisplay = key;
+    if ( htmlText[ key ] ) {
+        if ( currentFrame >= htmlText[ key ].length ) {
+           currentFrame = 0;
+           currentDisplay = '';
+           return res.send( '' );
+        }
+        if ( htmlText[ key ].length ) {
+            h = htmlText[ key ][ currentFrame ];
+
+            if ( streams.length > 0 ) {
+                for ( let v in streams[ 0 ].options.var_map ) {
+                    re = replre( '{{' + v + '}}' );
+                    h = h.replace( re, streams[ 0 ].options.var_map[ v ] );
+                }
+            }
+            re = replre( '{{view-list}}' );
+            h = h.replace( re, get_view_list() );
+            return res.send( h );
+        }
+    }
+  } catch ( err ) {
+    console.log( err );
+    next( err );
+  }
+  return res.send('<B><CENTER><FONT SZ=+4>Define content for ' + key + ' in config</FONT></CENTER></B>');
+});
+
 app.get('/keypress', async (req, res) => {
   try {
     switch( req.query.key ) {
+      case 'Info':        // TV remote
+        return res.send('OK');
+      case 'Minus':       // TV remote A
+      case 'Extra':       // TV remote B
+        zoom = !zoom;
+        break;
       case 'UpArrow':     // TV
+        if ( zoom )
+          pan( 'in' );
+        else
+          pan( 'up' );
+        break;
       case 'ArrowUp':     // Browser
         pan( 'up' );
         break;
@@ -443,9 +541,16 @@ app.get('/keypress', async (req, res) => {
         pan( 'right' );
         break;
       case 'DownArrow':   // TV
+        if ( zoom )
+          pan( 'out' );
+        else
+          pan( 'down' );
+        break;
       case 'ArrowDown':   // Browser
         pan( 'down' );
         break;
+      default:
+        console.log( 'key: ' + req.query.key );
     }
   }
   catch(err) { 

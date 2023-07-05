@@ -258,7 +258,7 @@ var main = function main() {
       case 458:
         lib.key('Guide');
         break;
-        case 10133:
+      case 10133:
         lib.key('Menu');
         break;
       case 10135:

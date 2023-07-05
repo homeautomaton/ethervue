@@ -12,16 +12,6 @@ key : ( function key( k ) {
       return;
     }
     switch ( k ) {
-      case 'UpArrow':     // TV
-      case 'DownArrow':   // TV
-      case 'LeftArrow':   // TV
-      case 'RightArrow':  // TV
-      case 'ArrowUp':     // Browser
-      case 'ArrowDown':   // Browser
-      case 'ArrowLeft':   // Browser
-      case 'ArrowRight':  // Browser
-        lib.keypress(k);
-        break;
       case 'Channel+': // TV
       case '+':        // Browser
         lib.next();
@@ -37,6 +27,20 @@ key : ( function key( k ) {
       case 'PreviousChannel':
         notice.innerHTML='Refresh';
         location.reload();
+        break;
+      case 'Info':     // TV
+      case 'Menu':
+      case 'Guide':
+      case 'ChannelList':
+      case 'E-Manual':
+      case 'i':        // Browser
+      case 'e':
+      case '?':
+      case 'h':
+      case 'm':
+      case 'g':
+      case 'c':
+        lib.display( k );
         break;
 
     // Browser
@@ -55,6 +59,10 @@ key : ( function key( k ) {
       case '|':
         lib.showKeys = ! lib.showKeys;
         break;
+
+      default:
+        lib.keypress( k );
+        break;
     }
 } ),
 
@@ -66,12 +74,12 @@ req : ( function req( path ) {
   return xhr;
 } ),
 
-dorequest : ( function dorequest( path, reload ) {
+dorequest : ( function dorequest( path, reload, callback ) {
   var xhr = lib.req( path );
   xhr.onreadystatechange = function () {
     if (xhr.readyState === xhr.DONE) {
       if (xhr.status === 200) {
-        console.log(xhr.responseText);
+        if ( callback ) callback( xhr.responseText );
         if ( reload ) location.reload();
       } else {
         console.log('There was a problem with the request.');
@@ -83,6 +91,13 @@ dorequest : ( function dorequest( path, reload ) {
   };
   xhr.send();
   return xhr;
+}),
+
+display : ( function display(key) {
+  lib.dorequest('/display?key='+ key, false, (data) => {
+    var info = document.getElementById("info");
+    info.innerHTML = data;
+  } );
 }),
 
 next : ( function next() {
