@@ -1,0 +1,110 @@
+{
+  "poll": [
+      { "name" : "back-porch-temperature", "url" : "http://192.168.2.1:1880/endpoint/temp", "interval" : "30" }
+  ],
+  "html" : "<div style='width: 200px; height: 60px; background-color: black;  position: absolute; top: 90%; left: 70%; '><font size=50>{{back-porch-temperature}}</font></div>",
+
+  "defaults": {
+      "rtsp-loglevel" : "quiet",
+      "ncat-loglevel" : "quiet",
+      "video-codec"   : "mpeg1video",
+      "format"        : "mpegts",
+      "fps"           : "35",
+      "exit-check"    : "ppid=$(ps -o ppid= -p $$$$); if [ $ppid = '1' ]; then exit; fi; ",
+      "cycle-cmd"     : "while true; do {{cmd}} done",
+      "time-option"   : "",
+      "timeout-cmd"   : "",
+      "audio-option"  : "",
+      "audio-x"       : "-c:a mp2 -af asetrate=8000 -q:a 0 -osr 32000 -b:a 32000",
+      "audio-32k"     : "-c:a mp2 -osr 32k -q:a 0 -b:a 32k"
+  },
+  "controls" : [
+      { "name" : "hi3510-ptz", 
+        "up"    : "http://{{host}}/cgi-bin/hi3510/param.cgi?cmd=ptzctrl&-step=1&-act=up&-speed=255",
+        "down"  : "http://{{host}}/cgi-bin/hi3510/param.cgi?cmd=ptzctrl&-step=1&-act=down&-speed=255",
+        "left"  : "http://{{host}}/cgi-bin/hi3510/param.cgi?cmd=ptzctrl&-step=1&-act=left&-speed=255",
+        "right" : "http://{{host}}/cgi-bin/hi3510/param.cgi?cmd=ptzctrl&-step=1&-act=right&-speed=255",
+        "in"    : "http://{{host}}/cgi-bin/hi3510/param.cgi?cmd=ptzctrl&-step=1&-act=zoomin&-speed=255",
+        "out"   : "http://{{host}}/cgi-bin/hi3510/param.cgi?cmd=ptzctrl&-step=1&-act=zoomout&-speed=255"
+      }
+  ],
+  "text" : [
+      { "name" : "ChannelList", "frames" : ["<div class=menu><font size=20>{{view-list}}</font></div>"] },
+      { "name" : "Info", "frames" : ["<div class=menu><font size=20>View {{name}} at {{host}}</font></div>"] },
+      { "name" : "Menu", "frames" : ["Menu A", "Menu B" ] },
+      { "name" : "Guide", "frames" : ["Guide A", "Guide B" ] },
+      { "name" : "E-Manual", "frames" : ["E-Manual A", "E-Manual B", "E-Manual C" ] }
+  ],
+  "views" : [
+    { "name"     : "rtsp-audio",
+      "sources"  : [ { "source" : "ffmpeg -rtsp_transport {{proto}} {{time-option}} -i rtsp://{{host}}:{{port}}/{{stream}} -nostats {{audio-option}} -loglevel {{rtsp-loglevel}} -f mp2 pipe:1 " } ],
+      "proto"    : "udp",
+      "port"     : "554",
+      "stream"   : "1"
+    },
+    { "name"     : "rtsp-default",
+      "sources"  : [ { "source" : "ffmpeg -rtsp_transport {{proto}} {{time-option}} -i rtsp://{{host}}:{{port}}/{{stream}} -nostats {{audio-option}} -r {{fps}} -loglevel {{rtsp-loglevel}} -vf scale={{hscale}}:{{vscale}} -f {{format}} -codec:v {{video-codec}} -" } ],
+      "proto"    : "udp",
+      "port"     : "554",
+      "stream"   : "1"
+    },
+    { "name"     : "rtsp-ptz",
+      "sources"  : [ { "view" : "rtsp-default", "control" : "hi3510-ptz" } ]
+    },
+    { "name"     : "ncat-ffmpeg",
+      "sources"  : [ { "source": "ffmpeg {{time-option}} -i <( ( printf '\\x55\\x55\\xaa\\xaa\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x50'; {{timeout-cmd}} cat ) | ncat {{host}} {{port}} -w 10s -i 10s ) -nostats -r {{fps}} -loglevel {{ncat-loglevel}} -vf scale={{scale}} -f {{format}} -codec:v {{video-codec}} -" } ],
+      "scale"    : "{{hscale}}:{{vscale}}",
+      "port"     : "8000"
+    },
+    { "name"     : "water-feature", "sources" : [ { "view" : "rtsp-ptz" } ],     "host" : "192.168.8.9",  "username":"admin", "password":"admin"},
+    { "name"     : "front-door",    "sources" : [ { "view" : "rtsp-ptz" } ],     "host" : "192.168.8.11", "username":"admin", "password":"admin"},
+    { "name"     : "driveway",      "sources" : [ { "view" : "rtsp-default" } ], "host" : "192.168.8.10", "username":"admin", "password":"admin"},
+    { "name"     : "barn",          "sources" : [ { "view" : "rtsp-default" } ], "host" : "192.168.8.2",  "username":"admin", "password":"admin"},
+    { "name"     : "garden",        "sources" : [ { "view" : "ncat-ffmpeg" } ],  "host" : "192.168.8.12", "username":"admin", "password":"111111",
+      "note"     : "app access should be available after July 5th" },
+
+    { "name"     : "dual",
+                 "cycle-time" : "10",
+                 "time-option"   : "-t {{cycle-time}}",
+                 "timeout-cmd"   : "timeout {{cycle-time}}",
+		 "sources" : [ { "view" : "barn", "stream": "2" },
+                               { "view" : "water-feature", "stream": "2" } ] },
+
+    { "name"   : "Quad View 1-4", 
+	         "key" : "A", 
+		 "sources" : [ { "view" : "front-door", "stream": "2", "audio-option" : "{{audio-32k}}" },
+                               { "view" : "driveway", "stream": "2" },
+                               { "view" : "barn", "stream": "2" },
+                               { "view" : "garden", "stream": "2" } ] },
+    { "name"   : "Cycle 1-4",    
+	         "key" : "B", 
+                 "cycle-time" : "10",
+                 "time-option"   : "-t {{cycle-time}}",
+                 "timeout-cmd"   : "timeout {{cycle-time}}",
+		 "sources" : [ { "view" : "front-door", "stream": "1" },
+                               { "view" : "driveway", "stream": "1" },
+                               { "view" : "garden", "stream": "1" },
+                               { "view" : "barn", "stream": "1" }
+                 ] },
+    { "name"   : "Combo 1-5", 
+	         "key" : "C", 
+		 "sources" : [ { "view" : "front-door", "stream": "2", "rtsp-loglevel" : "quiet"  },
+                               { "view" : "driveway", "stream": "2" },
+                               { "view" : "dual", "stream": "2" },
+                               { "view" : "garden", "stream": "2" } ] },
+    { "name"   : "Front Door",    "key" : "1", "sources" : [ { "view" : "front-door", "stream": "2", "audio-option" : "{{audio-32k}}" } ] },
+    { "name"   : "Driveway",      "key" : "2", "sources" : [ { "view" : "driveway", "stream": "1", "audio-option" : "{{audio-32k}}" } ] },
+    { "name"   : "Barn",          "key" : "3", "sources" : [ { "view" : "barn", "stream": "1", "audio-option" : "{{audio-32k}}" } ] },
+    { "name"   : "Garden",        "key" : "4", "sources" : [ { "view" : "garden", "stream": "1" } ] },
+    { "name"   : "Water Feature", "key" : "5", "sources" : [ { "view" : "water-feature", "stream": "2", "audio-option" : "{{audio-32k}}" } ] }
+],
+
+ "users": [
+  {
+   "userId": 0,
+   "username": "admin",
+   "password": "admin"
+  }
+ ],
+ "connectionType": "local"
+}

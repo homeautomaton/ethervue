@@ -3,6 +3,7 @@ queue : [],
 changeView : false,
 loadExpected : false,
 showKeys : false,
+intervals : [],
 
 key : ( function key( k ) {
     k = k.toString();
@@ -173,7 +174,16 @@ render : ( function render(resp) {
   notice.innerHTML = resp.currentTitle;
   var lastFrames = -1;
 
-  setInterval(function() { if ( frames == lastFrames ) { notice.innerHTML = "Video Stalled"; frames = 0; lastFrames = -1 } else { lastFrames = frames } } , 10000);
+  for (let i in lib.intervals) {
+      clearInterval(lib.intervals[i]);
+  }
+
+  lib.intervals = [];
+  let inv = setInterval(function() { if ( frames == lastFrames ) { notice.innerHTML = "Video Stalled"; frames = 0; lastFrames = -1 } else { lastFrames = frames } } , 10000);
+  lib.intervals.push(inv);
+  inv = setInterval(function() { lib.display('') } , 10000);
+  lib.display();
+  lib.intervals.push(inv);
 
   const table = document.getElementById("canvas");
   const trs = [];

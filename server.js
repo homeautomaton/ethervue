@@ -38,6 +38,7 @@ var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 //         also: ffmpeg -re -stream_loop -1   -rtsp_transport tcp -i rtsp://yourscameraorginalstream -c copy -acodec aac  -f rtsp rtsp://ipofyourmachine:8554/mystream
 //         https://marcochiappetta.medium.com/how-to-stream-rtsp-on-the-web-using-web-sockets-and-canvas-d821b8f7171e
 //         node-rtsp-stream
+//         https://github.com/forart/HyMPS/blob/main/RTSP.md#--
 
 // To Document:
 //         -vf:drawtext='fontsize=30:fontcolor=white:x=100:y=100:text=[`c`] %{localtime}'
@@ -75,6 +76,8 @@ let controls = {};
 let zoom = false;
 let currentDisplay = '';
 let htmlText = {};
+let pollVars = {};
+let intervals = [];
 
 app.use(cors(corsOptions));
 // eslint-disable-next-line no-use-before-define
@@ -241,6 +244,10 @@ function processConfig() {
     for ( let t of config.text ) {
         htmlText[ t.name ] = t.frames;
     }
+    for ( let p of config.poll ) {
+        pollVars[ p.name ] = p;
+    }
+    setUpPolling();
 }
 
 function saveConfig() {
@@ -417,6 +424,47 @@ app.get('/log', async (req, res) => {
   return res.send('OK');
 });
 
+function pollVariable( name, url ) {
+  console.log('begin poll ');
+  console.log(name);
+  console.log(url);
+  if ( url === undefined ) return;
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === xhr.DONE) {
+      if (xhr.status !== 200) {
+        console.log('There was a problem with the request. [' + xhr.status + ']');
+      } else {
+          console.log( name + ' = ' + xhr.responseText );
+          pollVars[ name ] = xhr.responseText;
+      }
+    }
+  };
+  xhr.onerror = function (e) {
+    console.log(xhr.statusText);
+  };
+  xhr.send();
+  return xhr;
+}
+
+function setUpPolling() {
+    for ( let i in intervals ) {
+        clearInterval( intervals[ i ] );
+    }
+    intervals = [];
+    for ( let p in pollVars ) {
+        console.log( pollVars[p].name );
+        console.log( pollVars[p].url );
+        console.log( pollVars[p].interval );
+        pollVariable( p, pollVars[p].url );
+        let url = pollVars[p].url;
+        inv = setInterval( function() { pollVariable( p, url ) }, pollVars[p].interval * 1000 );
+        intervals.push(inv);
+    }
+}
+
 function dorequest( url, username, password ) {
   var xhr = new XMLHttpRequest();
   xhr.withCredentials = true;
@@ -453,65 +501,76 @@ function get_view_list( ) {
 }
 
 app.get('/display', async (req, res, next) => {
+  var key;
   try {
-    switch( req.query.key) {
-      case 'ChannelList':
-      case 'c':
-          key = 'ChannelList';
-          break;
-
-      case 'Info':
-      case 'i':
-          key = 'Info';
-          break;
-
-      case 'Menu':
-      case 'm':
-          key = 'Menu';
-          break;
-
-      case 'Guide':
-      case 'g':
-          key = 'Guide';
-          break;
-
-      case 'E-Manual':
-      case 'e':
-      case '?':
-      case 'h':
-          key = 'E-Manual';
-          break;
+    if ( req.query.key !== undefined ) {
+      switch( req.query.key) {
+        case 'ChannelList':
+        case 'c':
+            key = 'ChannelList';
+            break;
+  
+        case 'Info':
+        case 'i':
+            key = 'Info';
+            break;
+  
+        case 'Menu':
+        case 'm':
+            key = 'Menu';
+            break;
+  
+        case 'Guide':
+        case 'g':
+            key = 'Guide';
+            break;
+  
+        case 'E-Manual':
+        case 'e':
+        case '?':
+        case 'h':
+            key = 'E-Manual';
+            break;
+      }
+      if ( key !== undefined ) {
+          if ( key == currentDisplay )
+            currentFrame += 1;
+          else
+            currentFrame = 0;
+          currentDisplay = key;
+      }
     }
-    if ( key == currentDisplay )
-        currentFrame += 1;
-    else
-        currentFrame = 0;
-    currentDisplay = key;
-    if ( htmlText[ key ] ) {
-        if ( currentFrame >= htmlText[ key ].length ) {
+    if ( htmlText[ currentDisplay ] ) {
+        if ( currentFrame >= htmlText[ currentDisplay ].length ) {
            currentFrame = 0;
            currentDisplay = '';
-           return res.send( '' );
+           return res.send( config.html );
         }
-        if ( htmlText[ key ].length ) {
-            h = htmlText[ key ][ currentFrame ];
+        if ( htmlText[ currentDisplay ].length ) {
+            h = htmlText[ currentDisplay ][ currentFrame ] + config.html;
+        }
+    } else
+        h = config.html;
 
-            if ( streams.length > 0 ) {
-                for ( let v in streams[ 0 ].options.var_map ) {
-                    re = replre( '{{' + v + '}}' );
-                    h = h.replace( re, streams[ 0 ].options.var_map[ v ] );
-                }
-            }
-            re = replre( '{{view-list}}' );
-            h = h.replace( re, get_view_list() );
-            return res.send( h );
+    let re;
+    if ( streams.length > 0 ) {
+        for ( let v in streams[ 0 ].options.var_map ) {
+            re = replre( '{{' + v + '}}' );
+            h = h.replace( re, streams[ 0 ].options.var_map[ v ] );
         }
     }
+    for ( let p in pollVars ) {
+        re = replre( '{{' + p + '}}' );
+        h = h.replace( re, pollVars[ p ] );
+    }
+    re = replre( '{{view-list}}' );
+    h = h.replace( re, get_view_list() );
+    return res.send( h );
   } catch ( err ) {
     console.log( err );
     next( err );
   }
-  return res.send('<B><CENTER><FONT SZ=+4>Define content for ' + key + ' in config</FONT></CENTER></B>');
+  return res.send('<B><CENTER><FONT SZ=+4>Define content for ' + key + ' in config</FONT></CENTER></B>' + config.html);
 });
 
 app.get('/keypress', async (req, res) => {
