@@ -1,9 +1,25 @@
 { http: ( { 
 queue : [],
-changeView : false,
 loadExpected : false,
 showKeys : false,
 intervals : [],
+currentDisplay : "",
+buttonTimer : "",
+eventStream : {},
+
+establishSSE : ( function establishSSE( ) {
+   lib.log('here 1');
+   var url = 'http://' + serverInfo.ip + ':3004/sse';
+   lib.log('here 2');
+   lib.eventStream= new EventSource(url);
+   lib.log('here 3');
+   lib.eventStream.onmessage =  (e)=> {
+         lib.log('here 5');
+         const data = JSON.parse(e.data);
+         lib.log(data);
+   };
+   lib.log('here 4');
+} ),
 
 key : ( function key( k ) {
     k = k.toString();
@@ -42,6 +58,10 @@ key : ( function key( k ) {
       case 'g':
       case 'c':
         lib.display( k );
+        break;
+
+      case 's':
+        lib.establishSSE();
         break;
 
     // Browser
@@ -96,8 +116,10 @@ dorequest : ( function dorequest( path, reload, callback ) {
 
 display : ( function display(key) {
   lib.dorequest('/display?key='+ key, false, (data) => {
+    let d=JSON.parse(data)
     var info = document.getElementById("info");
-    info.innerHTML = data;
+    info.innerHTML = d.content;
+    lib.currentDisplay = d.currentDisplay;
   } );
 }),
 
@@ -109,7 +131,7 @@ prev : ( function prev() {
   lib.dorequest('/prev?width=' + window.screen.width + '&height=' + window.screen.height, true);
 }),
 
-sel0 : ( function sel0(c) {
+chooseView : ( function chooseView(c) {
   lib.dorequest('/sel?view=' + c + '&width=' + window.screen.width + '&height=' + window.screen.height, true);
 }),
 
@@ -137,18 +159,15 @@ keypress : ( function keypress(key) {
 }),
 
 sel : ( function sel(c) {
+  if ( lib.buttonTimer != '' ) window.clearTimeout( lib.buttonTimer );
+  lib.buttonTimer = "";
   lib.queue.push(c.toString().toUpperCase());
   notice.innerHTML=lib.queue.join("")
-  if (!lib.changeView) {
-    lib.changeView = true;
-    window.setTimeout(function () {
-      var ch = { value: '' };
+  lib.buttonTimer = window.setTimeout(function () {
       var newch = lib.queue.join("");
-      lib.changeView = false;
       lib.queue = [];
-      lib.sel0(newch);
-    }, 1000);
-  }
+      lib.chooseView(newch);
+  }, 1000);
 }),
 
 fullScreen : ( function fullScreen() {

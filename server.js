@@ -76,7 +76,7 @@ let controls = {};
 let zoom = false;
 let currentDisplay = '';
 let htmlText = {};
-let pollVars = {};
+let httpVars = {};
 let intervals = [];
 
 app.use(cors(corsOptions));
@@ -244,8 +244,8 @@ function processConfig() {
     for ( let t of config.text ) {
         htmlText[ t.name ] = t.frames;
     }
-    for ( let p of config.poll ) {
-        pollVars[ p.name ] = p;
+    for ( let p of config.vars ) {
+        httpVars[ p.name ] = p;
     }
     setUpPolling();
 }
@@ -438,7 +438,7 @@ function pollVariable( name, url ) {
         console.log('There was a problem with the request. [' + xhr.status + ']');
       } else {
           console.log( name + ' = ' + xhr.responseText );
-          pollVars[ name ] = xhr.responseText;
+          httpVars[ name ].val = xhr.responseText;
       }
     }
   };
@@ -454,14 +454,16 @@ function setUpPolling() {
         clearInterval( intervals[ i ] );
     }
     intervals = [];
-    for ( let p in pollVars ) {
-        console.log( pollVars[p].name );
-        console.log( pollVars[p].url );
-        console.log( pollVars[p].interval );
-        pollVariable( p, pollVars[p].url );
-        let url = pollVars[p].url;
-        inv = setInterval( function() { pollVariable( p, url ) }, pollVars[p].interval * 1000 );
-        intervals.push(inv);
+    for ( let p in httpVars ) {
+        console.log( httpVars[p].name );
+        console.log( httpVars[p].url );
+        console.log( httpVars[p].interval );
+        if ( httpVars[p].url !== undefined ) {
+            pollVariable( p, httpVars[p].url );
+            let url = httpVars[p].url;
+            inv = setInterval( function() { pollVariable( p, url ) }, httpVars[p].interval * 1000 );
+            intervals.push(inv);
+        }
     }
 }
 
@@ -499,6 +501,54 @@ function get_view_list( ) {
     }
     return result;
 }
+
+function expand_text( content ) {
+    if ( streams.length > 0 ) {
+        for ( let v in streams[ 0 ].options.var_map ) {
+            re = replre( '{{' + v + '}}' );
+            content = content.replace( re, streams[ 0 ].options.var_map[ v ] );
+        }
+    }
+    for ( let p in httpVars ) {
+        re = replre( '{{' + p + '}}' );
+        content = content.replace( re, httpVars[ p ].val );
+    }
+    re = replre( '{{view-list}}' );
+    content = content.replace( re, get_view_list() );
+    return content;
+}
+
+app.get('/set', async (req, res, next) => {
+    if ( req.query.var !== undefined && req.query.val !== undefined ) {
+        if ( streams.length > 0 && req.query.var in streams[ 0 ].options.var_map ) {
+            // this likely isn't extremely useful, as var_map gets regenerated on reload
+            streams[ 0 ].options.var_map[ req.query.var ] = req.query.val;
+        } else {
+            httpVars[ req.query.var ].val = req.query.val;
+        }
+    }
+    return res.send( "OK" );
+});
+
+app.get('/get', async (req, res, next) => {
+    result = "";
+    if ( req.query.var !== undefined ) {
+        if ( streams.length > 0 && req.query.var in streams[ 0 ].options.var_map ) {
+            result = streams[ 0 ].options.var_map[ req.query.var ];
+        } else if ( req.query.var in httpVars ) {
+            result = httpVars[ req.query.var ].val;
+        }
+    }
+    return res.send( JSON.stringify( { result } ) );
+});
+
+app.get('/expand', async (req, res, next) => {
+    result = "";
+    if ( req.query.text !== undefined ) {
+        result = expand_text( req.query.text );
+    }
+    return res.send( JSON.stringify( { result } ) );
+});
 
 app.get('/display', async (req, res, next) => {
   var key;
@@ -540,37 +590,28 @@ app.get('/display', async (req, res, next) => {
           currentDisplay = key;
       }
     }
+    let content;
     if ( htmlText[ currentDisplay ] ) {
         if ( currentFrame >= htmlText[ currentDisplay ].length ) {
            currentFrame = 0;
            currentDisplay = '';
-           return res.send( config.html );
-        }
-        if ( htmlText[ currentDisplay ].length ) {
-            h = htmlText[ currentDisplay ][ currentFrame ] + config.html;
+           content = config.html;
+        } else if ( htmlText[ currentDisplay ].length ) {
+            content = htmlText[ currentDisplay ][ currentFrame ] + config.html;
         }
     } else
-        h = config.html;
+        content = config.html;
 
     let re;
-    if ( streams.length > 0 ) {
-        for ( let v in streams[ 0 ].options.var_map ) {
-            re = replre( '{{' + v + '}}' );
-            h = h.replace( re, streams[ 0 ].options.var_map[ v ] );
-        }
-    }
-    for ( let p in pollVars ) {
-        re = replre( '{{' + p + '}}' );
-        h = h.replace( re, pollVars[ p ] );
-    }
-    re = replre( '{{view-list}}' );
-    h = h.replace( re, get_view_list() );
-    return res.send( h );
+    content = expand_text( content );
+
+    return res.send( JSON.stringify( { content, currentDisplay } ) );
   } catch ( err ) {
     console.log( err );
     next( err );
   }
-  return res.send('<B><CENTER><FONT SZ=+4>Define content for ' + key + ' in config</FONT></CENTER></B>' + config.html);
+  content = '<B><CENTER><FONT SZ=+4>Define content for ' + key + ' in config</FONT></CENTER></B>' + config.html;
+  return res.send( JSON.stringify( { content, currentDisplay } ) );
 });
 
 app.get('/keypress', async (req, res) => {
@@ -709,5 +750,42 @@ app.post('/admin/config/save', protect(), async (req, res) => {
     config,
   }));
 });
+
+
+app.get('/sse', (req, res) => {
+  console.log('A');
+  res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
+  });
+  addSSEClient(req, res);
+});
+
+let clientData = [];
+let sequence = 1;
+function addSSEClient(req, res) {
+    console.log('B');
+    req.on('close', () =>  clientData = clientData.filter(o => o.res !== res));
+    clientData.push({
+        res,
+        clientNo: sequence++,
+        messageNo: 1
+    });
+}
+function send() {
+    clientData.forEach(o => {
+        console.log('C');
+        const data = JSON.stringify({
+            clientCount: clientData.length,
+            clientNo: o.clientNo,
+            messageNo: o.messageNo++
+        });
+    o.res.write(`data: ${data}\n\n`);
+    });
+    setTimeout(send, 1000);
+}
+
+setTimeout(send);
 
 app.listen(3004);
