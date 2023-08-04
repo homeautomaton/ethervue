@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const mkdirp = require('mkdirp');
 const { exec } = require('child_process');
 const Stream = require('./index');
+// const merge = require('lodash.merge');
 var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 
 // TODO:   
@@ -21,6 +22,7 @@ var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 //         turn on/off OSD on camera
 //         possible to scale movements according to zoom level?
 //         set time on camera ex: param.cgi?cmd=setservertime&-time=2011.08.23.10.35.08&-timezone=Asia%2FHong_Kong&-dstmode=off
+//         view images and video stored on SD
 
 //         improve UI of TV app, for configuring address and port
 //         move content of .currentView to cookie
@@ -30,7 +32,7 @@ var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 //         fix OS compatibility in mpeg1muxer.js:
 //             child_process.spawn("/bin/bash", [ "-c", this.cmd ], {
 //
-//         open a (second) websocket for server to send status updates
+//       X open a (second) websocket for server to send status updates
 //
 //         ONVIF?
 //
@@ -440,10 +442,12 @@ function pollVariable( name, url ) {
           console.log( name + ' = ' + xhr.responseText );
           httpVars[ name ].val = xhr.responseText;
       }
+      delete xhr;
     }
   };
   xhr.onerror = function (e) {
     console.log(xhr.statusText);
+    delete xhr;
   };
   xhr.send();
   return xhr;
@@ -458,7 +462,7 @@ function setUpPolling() {
         console.log( httpVars[p].name );
         console.log( httpVars[p].url );
         console.log( httpVars[p].interval );
-        if ( httpVars[p].url !== undefined ) {
+        if ( httpVars[p].url !== undefined && httpVars[p].interval > 0 ) {
             pollVariable( p, httpVars[p].url );
             let url = httpVars[p].url;
             inv = setInterval( function() { pollVariable( p, url ) }, httpVars[p].interval * 1000 );
@@ -519,12 +523,26 @@ function expand_text( content ) {
 }
 
 app.get('/set', async (req, res, next) => {
-    if ( req.query.var !== undefined && req.query.val !== undefined ) {
-        if ( streams.length > 0 && req.query.var in streams[ 0 ].options.var_map ) {
-            // this likely isn't extremely useful, as var_map gets regenerated on reload
+    if ( req.query.val !== undefined ) {
+        if ( req.query.var !== undefined && streams.length > 0 && req.query.var in streams[ 0 ].options.var_map ) {
             streams[ 0 ].options.var_map[ req.query.var ] = req.query.val;
-        } else {
+        } else if ( req.query.var !== undefined ) {
             httpVars[ req.query.var ].val = req.query.val;
+        } else {
+            try {
+                var tmp = JSON.parse( req.query.val );
+                // merge( httpVars, tmp );
+                for ( v in tmp ) {
+                    if ( v in httpVars ) {
+                        httpVars[ v ].val = tmp[ v ];
+                    } else {
+                        httpVars[ v ] = { "name" : v, "val" : tmp[ v ] };
+                    }
+                }
+                console.log( JSON.stringify( httpVars ) );
+            } catch ( err ) {
+                console.log( err );
+            }
         }
     }
     return res.send( "OK" );
